@@ -22,7 +22,7 @@ namespace d14engine::ui
         SYSTEM_FONT_NAMES.clear();
 
         ComPtr<IDWriteFontCollection1> fontCollection;
-        THROW_IF_FAILED(Application::RNDR->dWriteFactory->
+        THROW_IF_FAILED(Application::RENDERER->dWriteFactory->
             GetSystemFontCollection(FALSE, &fontCollection, TRUE));
 
         std::vector<ComPtr<IDWriteFontFamily>>
@@ -85,7 +85,7 @@ namespace d14engine::ui
         DWRITE_FONT_STYLE fontStyle,
         DWRITE_FONT_STRETCH fontStretch)
     {
-        THROW_IF_FAILED(Application::RNDR->dWriteFactory->CreateTextFormat(
+        THROW_IF_FAILED(Application::RENDERER->dWriteFactory->CreateTextFormat(
             fontFamilyName.c_str(),
             nullptr,
             fontWeight,
@@ -102,7 +102,7 @@ namespace d14engine::ui
     void UIResourceUtils::LoadCommonBrushes()
     {
         // Solid Color Brush
-        THROW_IF_FAILED(Application::RNDR->d2d1DeviceContext->
+        THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->
             CreateSolidColorBrush((D2D1::ColorF)D2D1::ColorF::Black, &SOLID_COLOR_BRUSH));
     }
 
@@ -111,7 +111,7 @@ namespace d14engine::ui
     void UIResourceUtils::LoadCommonEffects()
     {
         // Shadow Effect
-        THROW_IF_FAILED(Application::RNDR->d2d1DeviceContext->
+        THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->
             CreateEffect(CLSID_D2D1Shadow, &SHADOW_EFFECT));
     }
 

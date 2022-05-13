@@ -67,12 +67,12 @@ namespace d14engine::ui
 
     void Panel::RegisterDrawObjects()
     {
-        Application::RNDR->AddDrawObject2D(shared_from_this());
+        Application::RENDERER->AddDrawObject2D(shared_from_this());
     }
 
     void Panel::UnregisterDrawObjects()
     {
-        Application::RNDR->RemoveDrawObject2D(shared_from_this());
+        Application::RENDERER->RemoveDrawObject2D(shared_from_this());
     }
 
     void Panel::RegisterApplicationEvents()
@@ -184,6 +184,50 @@ namespace d14engine::ui
         OnMove(me);
     }
 
+    bool Panel::OnGetFocus()
+    {
+        if (f_onGetFocusOverride)
+        {
+            return f_onGetFocusOverride();
+        }
+        else
+        {
+            if (f_onGetFocusBefore) f_onGetFocusBefore();
+
+            bool value = OnGetFocusHelper();
+
+            return f_onGetFocusAfter ? f_onGetFocusAfter() : value;
+        }
+    }
+
+    bool Panel::OnGetFocusHelper()
+    {
+        PinApplicationEvents();
+        return true;
+    }
+
+    bool Panel::OnLoseFocus()
+    {
+        if (f_onLoseFocusOverride)
+        {
+            return f_onLoseFocusOverride();
+        }
+        else
+        {
+            if (f_onLoseFocusBefore) f_onLoseFocusBefore();
+
+            bool value = OnLoseFocusHelper();
+
+            return f_onLoseFocusAfter ? f_onLoseFocusAfter() : value;
+        }
+    }
+
+    bool Panel::OnLoseFocusHelper()
+    {
+        UnpinApplicationEvents();
+        return true;
+    }
+
     bool Panel::OnMouseButton(MouseButtonEvent& e)
     {
         if (f_onMouseButtonOverride)
@@ -203,22 +247,27 @@ namespace d14engine::ui
 
     bool Panel::OnMouseButtonHelper(MouseButtonEvent& e)
     {
-        // Only broadcast the event to those hit widgets.
-        for (auto& child : m_hitChildren)
+        // Only broadcast the event to those hit children.
+        ISortable<Panel>::Foreach(m_hitChildren, [&](ShrdPtrParam<Panel> child)
         {
             if (child->IsMouseButtonSensitive())
             {
+                if (e.status.LeftDown() && child->isFocusable) e.focused = child;
                 // Note the return boolean means whether to continue delivering the event.
-                if (!child->OnMouseButton(e)) break;
+                return child->OnMouseButton(e);
             }
-        }
-        for (auto& child : m_pinnedChildren)
+            return false;
+        });
+        ISortable<Panel>::Foreach(m_diffPinnedChildren, [&](ShrdPtrParam<Panel> child)
         {
             if (child->IsMouseButtonSensitive())
             {
-                if (!child->OnMouseButton(e)) break;
+                // The focused should be selected from those actual hit children,
+                // so there's no need to update mouse-button event's focused field.
+                return child->OnMouseButton(e);
             }
-        }
+            return false;
+        });
         return false;
     }
 
@@ -275,51 +324,56 @@ namespace d14engine::ui
         MouseEnterEvent mee = {};
         mee.cursorPoint = e.cursorPoint;
 
-        for (auto& child : currHitChildren)
+        ISortable<Panel>::Foreach(currHitChildren, [&](ShrdPtrParam<Panel> child)
         {
             // Moved in just now, trigger OnMouseEnter event.
             if (m_hitChildren.find(child) == m_hitChildren.end())
             {
                 if (child->IsMouseEnterSensitive())
                 {
-                    if (!child->OnMouseEnter(mee)) break;
+                    return child->OnMouseEnter(mee);
                 }
             }
-        }
+            return false;
+        });
         // OnMouseLeave
         MouseLeaveEvent mle = {};
         mle.cursorPoint = e.lastCursorPoint;
 
-        for (auto& child : m_hitChildren)
+        ISortable<Panel>::Foreach(m_hitChildren, [&](ShrdPtrParam<Panel> child)
         {
             // Moved out just now, trigger OnMouseLeave event.
             if (currHitChildren.find(child) == currHitChildren.end())
             {
                 if (child->IsMouseLeaveSensitive())
                 {
-                    if (!child->OnMouseLeave(mle)) break;
+                    return child->OnMouseLeave(mle);
                 }
             }
-        }
-        // Update panel's hit children set.
+            return false;
+        });
         m_hitChildren = std::move(currHitChildren);
 
-        // Only broadcast the event to those hit widgets.
-        for (auto& hit : m_hitChildren)
+        // Only broadcast the event to those hit children.
+        ISortable<Panel>::Foreach(m_hitChildren, [&](ShrdPtrParam<Panel> child)
         {
-            if (hit->IsMouseMoveSensitive())
+            if (child->IsMouseMoveSensitive())
             {
                 // Note the return boolean means whether to continue delivering the event.
-                if (!hit->OnMouseMove(e)) break;
+                return child->OnMouseMove(e);
             }
-        }
-        for (auto& pinned : m_pinnedChildren)
+            return false;
+        });
+        UpdateDiffPinnedUIObjects();
+
+        ISortable<Panel>::Foreach(m_diffPinnedChildren, [&](ShrdPtrParam<Panel> child)
         {
-            if (pinned->IsMouseMoveSensitive())
+            if (child->IsMouseMoveSensitive())
             {
-                if (!pinned->OnMouseMove(e)) break;
+                return child->OnMouseMove(e);
             }
-        }
+            return false;
+        });
         return false;
     }
 
@@ -362,22 +416,24 @@ namespace d14engine::ui
 
     bool Panel::OnMouseWheelHelper(MouseWheelEvent& e)
     {
-        // Only broadcast the event to those hit widgets.
-        for (auto& child : m_hitChildren)
+        // Only broadcast the event to those hit children.
+        ISortable<Panel>::Foreach(m_hitChildren, [&](ShrdPtrParam<Panel> child)
         {
             if (child->IsMouseWheelSensitive())
             {
                 // Note the return boolean means whether to continue delivering the event.
-                if (!child->OnMouseWheel(e)) break;
+                return child->OnMouseWheel(e);
             }
-        }
-        for (auto& child : m_pinnedChildren)
+            return false;
+        });
+        ISortable<Panel>::Foreach(m_diffPinnedChildren, [&](ShrdPtrParam<Panel> child)
         {
             if (child->IsMouseWheelSensitive())
             {
-                if (!child->OnMouseWheel(e)) break;
+                return child->OnMouseWheel(e);
             }
-        }
+            return false;
+        });
         return false;
     }
 
@@ -399,22 +455,24 @@ namespace d14engine::ui
 
     bool Panel::OnKeyboardHelper(KeyboardEvent& e)
     {
-        // Only broadcast the event to those hit widgets.
-        for (auto& child : m_hitChildren)
+        // Only broadcast the event to those hit children.
+        ISortable<Panel>::Foreach(m_hitChildren, [&](ShrdPtrParam<Panel> child)
         {
             if (child->IsKeyboardSensitive())
             {
                 // Note the return boolean means whether to continue delivering the event.
-                if (!child->OnKeyboard(e)) break;
+                return child->OnKeyboard(e);
             }
-        }
-        for (auto& child : m_pinnedChildren)
+            return false;
+        });
+        ISortable<Panel>::Foreach(m_diffPinnedChildren, [&](ShrdPtrParam<Panel> child)
         {
             if (child->IsKeyboardSensitive())
             {
-                if (!child->OnKeyboard(e)) break;
+                return child->OnKeyboard(e);
             }
-        }
+            return false;
+        });
         return false;
     }
 
@@ -581,16 +639,56 @@ namespace d14engine::ui
     {
         if (uiobj == nullptr) return;
         m_pinnedChildren.insert(uiobj);
+
+        UpdateDiffPinnedUIObjectsLater();
     }
 
     void Panel::UnpinUIObject(ShrdPtrParam<Panel> uiobj)
     {
         m_pinnedChildren.erase(uiobj);
+
+        UpdateDiffPinnedUIObjectsLater();
     }
 
-    void Panel::ForeachChild(const Function<void(ShrdPtrParam<Panel>)>& func)
+    void Panel::UpdateDiffPinnedUIObjects()
     {
-        for (auto& uiobj : m_children) func(uiobj);
+        m_diffPinnedChildren.clear();
+        // The pinned children are not included in hit children to avoid double-callback.
+        // For example, a button will respond twice if it is pinned and hit at the same time.
+        std::set_difference(
+            m_pinnedChildren.begin(), m_pinnedChildren.end(),
+            m_hitChildren.begin(), m_hitChildren.end(),
+            std::inserter(m_diffPinnedChildren, m_diffPinnedChildren.begin()),
+            ISortable<Panel>::WeakAscending()); // Can't deduce automatically.
+    }
+
+    void Panel::UpdateDiffPinnedUIObjectsLater()
+    {
+        Application::APP->MarkDiffPinnedUpdatingCandidate(weak_from_this());
+        Application::APP->PostCustomWinMessage(Application::CustomWinMessage::UpdateMiscDiffPinnedUIObjects);
+    }
+
+    void Panel::PinApplicationEvents()
+    {
+        if (m_parent.expired())
+        {
+            Application::APP->PinUIObject(shared_from_this());
+        }
+        else m_parent.lock()->PinUIObject(shared_from_this());
+    }
+
+    void Panel::UnpinApplicationEvents()
+    {
+        if (m_parent.expired())
+        {
+            Application::APP->UnpinUIObject(shared_from_this());
+        }
+        else m_parent.lock()->UnpinUIObject(shared_from_this());
+    }
+
+    void Panel::ForeachChild(const Function<void(Panel*)>& func)
+    {
+        for (auto& uiobj : m_children) func(uiobj.get());
     }
 
     D2D1_POINT_2F Panel::AbsoluteToRelative(const D2D1_POINT_2F& p)
@@ -673,11 +771,8 @@ namespace d14engine::ui
 
     void Panel::Transform(float left, float top, float width, float height)
     {
-        float minWidth = MinimalWidth();
-        width = max(width, minWidth);
-
-        float minHeight = MinimalHeight();
-        height = max(height, minHeight);
+        width = std::max(width, MinimalWidth());
+        height = std::max(height, MinimalHeight());
 
         m_rect = { left, top, left + width, top + height };
 
@@ -693,11 +788,8 @@ namespace d14engine::ui
 
     void Panel::Resize(float width, float height)
     {
-        float minWidth = MinimalWidth();
-        width = max(width, minWidth);
-
-        float minHeight = MinimalHeight();
-        height = max(height, minHeight);
+        width = std::max(width, MinimalWidth());
+        height = std::max(height, MinimalHeight());
 
         m_rect.right = m_rect.left + width;
         m_rect.bottom = m_rect.top + height;
@@ -711,8 +803,11 @@ namespace d14engine::ui
 
         if (m_parent.expired())
         {
-            UnregisterDrawObjects();
-            RegisterDrawObjects();
+            if (Application::APP->FindUIObject(shared_from_this()))
+            {
+                UnregisterApplicationEvents();
+                RegisterApplicationEvents();
+            }
         }
         else // Managed by parent object.
         {
@@ -728,8 +823,11 @@ namespace d14engine::ui
 
         if (m_parent.expired())
         {
-            UnregisterApplicationEvents();
-            RegisterApplicationEvents();
+            if (Application::APP->RENDERER->FindDrawObject2D(shared_from_this()))
+            {
+                UnregisterDrawObjects();
+                RegisterDrawObjects();
+            }
         }
         else // Managed by parent object.
         {
@@ -778,6 +876,16 @@ namespace d14engine::ui
         }
     }
 
+    const D2D1_RECT_F& Panel::AbsoluteRect()
+    {
+        return m_absoluteRect;
+    }
+
+    const D2D1_RECT_F& Panel::RelativeRect()
+    {
+        return m_rect;
+    }
+
     D2D1_RECT_F Panel::SelfCoordRect()
     {
         return { 0.0f, 0.0f, Width(), Height() };
@@ -809,12 +917,12 @@ namespace d14engine::ui
     {
         if (brush != nullptr)
         {
-            D2D1_ROUNDED_RECT roundedRect = { m_absoluteRect, m_radiusX, m_radiusY };
+            D2D1_ROUNDED_RECT roundedRect = { m_absoluteRect, roundRadiusX, roundRadiusY };
             rndr->d2d1DeviceContext->FillRoundedRectangle(roundedRect, brush.Get());
         }
         if (bitmap != nullptr)
         {
-            rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), m_absoluteRect);
+            rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), m_absoluteRect, bitmapOpaque);
         }
     }
     void Panel::DrawChildrenObjects(Renderer* rndr)

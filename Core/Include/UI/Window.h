@@ -5,11 +5,11 @@
 #include "Label.h"
 #include "MaskStyle.h"
 #include "ShadowStyle.h"
-#include "SolidColorStyle.h"
+#include "SolidStyle.h"
 
 namespace d14engine::ui
 {
-    struct Window : Panel, MaskStyle, ShadowStyle, SolidColorStyle
+    struct Window : Panel, MaskStyle, ShadowStyle, SolidStyle
     {
         static ComPtr<ID2D1LinearGradientBrush>
             g_titleBarPanelBrush,
@@ -19,15 +19,11 @@ namespace d14engine::ui
 
         Window(WstrParam text, const D2D1_RECT_F& rect);
 
-        void OnInitializeFinish() override
-        {
-            m_title->SetParent(shared_from_this());
-            m_closeX->SetParent(shared_from_this());
-        }
+        void OnInitializeFinish() override;
 
         // See Panel.h for the reason of an extral OnxxxHelper.
 
-        virtual void OnMinimize();
+        void OnMinimize();
         virtual void OnMinimizeHelper();
 
         Function<void(Window*)>
@@ -35,7 +31,7 @@ namespace d14engine::ui
             f_onMinimizeBefore = {},
             f_onMinimizeAfter = {};
 
-        virtual void OnMaximize();
+        void OnMaximize();
         virtual void OnMaximizeHelper();
 
         Function<void(Window*)>
@@ -43,7 +39,7 @@ namespace d14engine::ui
             f_onMaximizeBefore = {},
             f_onMaximizeAfter = {};
 
-        virtual void OnClose();
+        void OnClose();
         virtual void OnCloseHelper();
 
         Function<void(Window*)>
@@ -53,6 +49,18 @@ namespace d14engine::ui
 
     protected:
         SharedPtr<Label> m_title, m_closeX;
+
+        // Define an extra visibility flag to control whether to show the title;
+        // it will only be drawn when both extra and self visibility flags are true,
+        // which is used to prevent the title displaying unexpectedly in such case:
+        // the window is scaled too small to show the title text, and if we use the
+        // self visibility flag to hide it then there's a chance to show it again
+        // incorrectly by simply calling SetVisible(true), so we must introduce the
+        // protected visibility flag to make sure the title won't show in such case.
+        bool m_isTitleVisible = true;
+
+        // Forbid the 3 brothers to respond events when move or resize the window.
+        bool m_is3BrothersEnabled = true;
 
         D2D1_RECT_F TitlePanelRect();
 
@@ -93,7 +101,7 @@ namespace d14engine::ui
 
         static void Set3BrothersButtonBrushState(bool isHover, bool isDown);
 
-        static void Set3BrothersIconBrushState();
+        static void Set3BrothersIconBrushState(bool isHover, bool isDown);
 
     public:
         // Override interface methods.
@@ -103,7 +111,7 @@ namespace d14engine::ui
 
         void OnRendererDrawD2D1Object(Renderer* rndr) override;
 
-        // IUIObject
+        // Panel
         bool IsHit(Event::Point& p) override;
 
         float MinimalWidth() override;

@@ -4,6 +4,8 @@
 
 namespace d14engine::ui
 {
+    struct Panel;
+
     struct Event
     {
         using Size = D2D1_SIZE_F;
@@ -57,6 +59,11 @@ namespace d14engine::ui
             bool MiddleUp() { return flag == Flag::MiddleUp; }
         }
         status = {};
+
+        // This field always points to the current focused UI object. Only focusable UI object could be focused.
+        // e.g. suppose the event is delivered as A --> B --> C, where A, C is not focusable and B is focusable:
+        // For A, focused keeps nullptr; for B, focused changes to B; for C, focused remains B as C is not focusable.
+        WeakPtr<Panel> focused;
     };
 
     struct MouseEnterEvent : MouseEvent { };

@@ -2,7 +2,7 @@
 
 #include "Precompile.h"
 
-#include "Renderer/IDrawObject2D.h"
+#include "Renderer/Renderer.h"
 using namespace d14engine::renderer;
 
 #include "Event.h"
@@ -96,7 +96,7 @@ namespace d14engine::ui
         * To sum up, do the actual works in OnxxxHelper method and wrap it into Onxxx method.
         */
 
-        virtual void OnSize(SizeEvent& e);
+        void OnSize(SizeEvent& e);
         virtual void OnSizeHelper(SizeEvent& e);
 
         Function<void(Panel*,SizeEvent&)>
@@ -104,7 +104,7 @@ namespace d14engine::ui
             f_onSizeBefore = {},
             f_onSizeAfter = {};
 
-        virtual void OnParentSize(SizeEvent& e);
+        void OnParentSize(SizeEvent& e);
         virtual void OnParentSizeHelper(SizeEvent& e);
 
         Function<void(Panel*,SizeEvent&)>
@@ -112,7 +112,7 @@ namespace d14engine::ui
             f_onParentSizeBefore = {},
             f_onParentSizeAfter = {};
 
-        virtual void OnMove(MoveEvent& e);
+        void OnMove(MoveEvent& e);
         virtual void OnMoveHelper(MoveEvent& e);
 
         Function<void(Panel*,MoveEvent&)>
@@ -120,7 +120,7 @@ namespace d14engine::ui
             f_onMoveBefore = {},
             f_onMoveAfter = {};
 
-        virtual void OnParentMove(MoveEvent& e);
+        void OnParentMove(MoveEvent& e);
         virtual void OnParentMoveHelper(MoveEvent& e);
 
         Function<void(Panel*,MoveEvent&)>
@@ -128,7 +128,32 @@ namespace d14engine::ui
             f_onParentMoveBefore = {},
             f_onParentMoveAfter = {};
 
-        virtual bool OnMouseButton(MouseButtonEvent& e);
+        // Set this field to true if expect to receive get/lose focus event.
+        bool isFocusable = false;
+
+        // These event callbacks return a boolean value,
+        // which means whether the UI object should be set/lose focus actually.
+
+        bool OnGetFocus();
+        virtual bool OnGetFocusHelper();
+
+        Function<bool(void)>
+            f_onGetFocusOverride = {},
+            f_onGetFocusBefore = {},
+            f_onGetFocusAfter = {};
+
+        bool OnLoseFocus();
+        virtual bool OnLoseFocusHelper();
+
+        Function<bool()>
+            f_onLoseFocusOverride = {},
+            f_onLoseFocusBefore = {},
+            f_onLoseFocusAfter = {};
+
+        // These event callbacks return a boolean value,
+        // which means whether to continue delivering the event to other UI objects.
+
+        bool OnMouseButton(MouseButtonEvent& e);
         virtual bool OnMouseButtonHelper(MouseButtonEvent& e);
 
         Function<bool(Panel*,MouseButtonEvent&)>
@@ -136,7 +161,7 @@ namespace d14engine::ui
             f_onMouseButtonBefore = {},
             f_onMouseButtonAfter = {};
 
-        virtual bool OnMouseEnter(MouseEnterEvent& e);
+        bool OnMouseEnter(MouseEnterEvent& e);
         virtual bool OnMouseEnterHelper(MouseEnterEvent& e);
 
         Function<bool(Panel*,MouseEnterEvent&)>
@@ -144,7 +169,7 @@ namespace d14engine::ui
             f_onMouseEnterBefore = {},
             f_onMouseEnterAfter = {};
 
-        virtual bool OnMouseMove(MouseMoveEvent& e);
+        bool OnMouseMove(MouseMoveEvent& e);
         virtual bool OnMouseMoveHelper(MouseMoveEvent& e);
 
         Function<bool(Panel*,MouseMoveEvent&)>
@@ -152,7 +177,7 @@ namespace d14engine::ui
             f_onMouseMoveBefore = {},
             f_onMouseMoveAfter = {};
 
-        virtual bool OnMouseLeave(MouseLeaveEvent& e);
+        bool OnMouseLeave(MouseLeaveEvent& e);
         virtual bool OnMouseLeaveHelper(MouseLeaveEvent& e);
 
         Function<bool(Panel*,MouseLeaveEvent&)>
@@ -160,7 +185,7 @@ namespace d14engine::ui
             f_onMouseLeaveBefore = {},
             f_onMouseLeaveAfter = {};
 
-        virtual bool OnMouseWheel(MouseWheelEvent& e);
+        bool OnMouseWheel(MouseWheelEvent& e);
         virtual bool OnMouseWheelHelper(MouseWheelEvent& e);
 
         Function<bool(Panel*,MouseWheelEvent&)>
@@ -168,7 +193,7 @@ namespace d14engine::ui
             f_onMouseWheelBefore = {},
             f_onMouseWheelAfter = {};
 
-        virtual bool OnKeyboard(KeyboardEvent& e);
+        bool OnKeyboard(KeyboardEvent& e);
         virtual bool OnKeyboardHelper(KeyboardEvent& e);
 
         Function<bool(Panel*,KeyboardEvent&)>
@@ -209,17 +234,15 @@ namespace d14engine::ui
         bool m_isKeyboardSensitive = true;
 
         D2D1_RECT_F m_rect;
-
-        float m_radiusX = 0.0f, m_radiusY = 0.0f;
         
         // Cache this to reduce the computational overhead during rendering.
         D2D1_RECT_F m_absoluteRect;
 
     public:
-        // This is the same as IsD2D1ObjectVisible for Panel,
-        // we add this method only for compatibility reasons.
-        bool IsVisible();
-        void SetVisible(bool value);
+        // This is the same as IsD2D1ObjectVisible for Panel since there're only D2D1 objects.
+        // A derived class can control the visibility of D3D12 objects by overriding this method.
+        virtual bool IsVisible();
+        virtual void SetVisible(bool value);
 
         bool IsEnabled();
         void SetEnabled(bool value);
@@ -240,7 +263,17 @@ namespace d14engine::ui
         void PinUIObject(ShrdPtrParam<Panel> uiobj);
         void UnpinUIObject(ShrdPtrParam<Panel> uiobj);
 
-        void ForeachChild(const Function<void(ShrdPtrParam<Panel>)>& func);
+        // Don't call this method directly in any callback, use xxxLater instead.
+        // See UpdateDiffPinnedUIObjectsLater in Application.h for explanations.
+        void UpdateDiffPinnedUIObjects();
+        void UpdateDiffPinnedUIObjectsLater();
+
+        void PinApplicationEvents();
+        void UnpinApplicationEvents();
+
+        // Pass through RawPtr directly instead of SharedPtr since the iteration
+        // is performed temporarily and no child should be referenced externally.
+        void ForeachChild(const Function<void(Panel*)>& func);
 
         // Absolute position is relative to the root window (HWND).
 
@@ -277,6 +310,9 @@ namespace d14engine::ui
 
         void UpdateAbsoluteRect();
 
+        const D2D1_RECT_F& AbsoluteRect();
+        const D2D1_RECT_F& RelativeRect();
+
         D2D1_RECT_F SelfCoordRect();
 
     public:
@@ -285,7 +321,11 @@ namespace d14engine::ui
         // you need to initialize the brush and set bitmap to nullptr.
 
         ComPtr<ID2D1Brush> brush = nullptr;
+
+        float bitmapOpaque = 1.0f;
         ComPtr<ID2D1Bitmap1> bitmap = nullptr;
+
+        float roundRadiusX = 0.0f, roundRadiusY = 0.0f;
 
     protected:
         void UpdateChildrenObjects(Renderer* rndr);
@@ -297,9 +337,7 @@ namespace d14engine::ui
         void DrawChildrenObjects(Renderer* rndr);
 
     protected:
-        using DrawObject2DSet = std::set<SharedPtr<IDrawObject2D>, ISortable<IDrawObject2D>::UniqueAscending>;
-
-        DrawObject2DSet m_drawObjects2D;
+        Renderer::DrawObject2DSet m_drawObjects2D;
 
         // Don't use SharedPtr here since it will cause circular reference.
         WeakPtr<Panel> m_parent;
@@ -308,11 +346,11 @@ namespace d14engine::ui
 
         ChildObjectSet m_children;
 
-        using ChildObjectPrioritySet = std::set<SharedPtr<Panel>, ISortable<Panel>::UniqueAscending>;
+        using ChildObjectPrioritySet = ISortable<Panel>::WeakPrioritySet;
 
         ChildObjectPrioritySet m_hitChildren;
 
         // Pinned children would still receive UI events even though they are not hit.
-        ChildObjectPrioritySet m_pinnedChildren;
+        ChildObjectPrioritySet m_pinnedChildren, m_diffPinnedChildren;
     };
 }

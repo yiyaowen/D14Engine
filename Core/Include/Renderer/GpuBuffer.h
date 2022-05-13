@@ -18,47 +18,9 @@ namespace d14engine::renderer
 
         // This ctor only create the buffer and its intermidiate peer (no init).
         // You should initialize the buffer via intermidiate peer later manually.
-        DefaultBuffer(ID3D12Device* device, UINT64 byteSize)
-        {
-            THROW_IF_FAILED(device->CreateCommittedResource(
-                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-                D3D12_HEAP_FLAG_NONE,
-                &CD3DX12_RESOURCE_DESC::Buffer(byteSize),
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                nullptr,
-                IID_PPV_ARGS(&resource)));
+        DefaultBuffer(ID3D12Device* device, UINT64 byteSize);
 
-            THROW_IF_FAILED(device->CreateCommittedResource(
-                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-                D3D12_HEAP_FLAG_NONE,
-                &CD3DX12_RESOURCE_DESC::Buffer(byteSize),
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                nullptr,
-                IID_PPV_ARGS(&intermidiate)));
-        }
-
-        void UploadData(ID3D12GraphicsCommandList* cmdList, void* pSrc, UINT64 byteSize)
-        {
-            // Copy from source data to intermidiate buffer.
-            BYTE* mapped;
-            THROW_IF_FAILED(intermidiate->Map(0, nullptr, (void**)&mapped));
-
-            memcpy(mapped, pSrc, byteSize);
-
-            intermidiate->Unmap(0, nullptr);
-
-            // Copy from intermidiate buffer to resource buffer.
-            D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
-                resource.Get(),
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                D3D12_RESOURCE_STATE_COPY_DEST);
-            cmdList->ResourceBarrier(1, &b);
-
-            cmdList->CopyBufferRegion(resource.Get(), 0, intermidiate.Get(), 0, byteSize);
-            
-            std::swap(b.Transition.StateAfter, b.Transition.StateBefore);
-            cmdList->ResourceBarrier(1, &b);
-        }
+        void UploadData(ID3D12GraphicsCommandList* cmdList, void* pSrc, UINT64 byteSize);
     };
 
     // Maintain a resource buffer with UPLOAD type (dynamic).
@@ -78,29 +40,9 @@ namespace d14engine::renderer
 
         // This ctor only create the buffer and map it to the memory space.
         // You should initialize the buffer via mapped addr later manually.
-        UploadBuffer(ID3D12Device* device, UINT elemCount, UINT64 elemByteSize)
-            : elemCount(elemCount), elemByteSize(elemByteSize)
-        {
-            THROW_IF_FAILED(device->CreateCommittedResource(
-                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-                D3D12_HEAP_FLAG_NONE,
-                &CD3DX12_RESOURCE_DESC::Buffer(elemCount * elemByteSize),
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                nullptr,
-                IID_PPV_ARGS(&resource)));
+        UploadBuffer(ID3D12Device* device, UINT elemCount, UINT64 elemByteSize);
 
-            THROW_IF_FAILED(resource->Map(0, nullptr, (void**)&mapped));
-        }
-
-        virtual ~UploadBuffer()
-        {
-            // Unmap reference before buffer released!
-            if (resource != nullptr)
-            {
-                resource->Unmap(0, nullptr);
-            }
-            mapped = nullptr;
-        }
+        virtual ~UploadBuffer();
 
         // Upload data via copying source to mapped addr.
         //
@@ -110,10 +52,7 @@ namespace d14engine::renderer
         // If you bind a specific array with this buffer, pSrc should be
         // set to &array[srcIndexOffset] to upload the related element data.
         //
-        void CopyData(UINT dstIndexOffset, void* pSrc, UINT64 byteSize)
-        {
-            memcpy(&mapped[dstIndexOffset * elemByteSize], pSrc, byteSize);
-        }
+        void CopyData(UINT dstIndexOffset, void* pSrc, UINT64 byteSize);
     };
 
     // Inherited from UploadBuffer (specialized for HLSL cbuffer).

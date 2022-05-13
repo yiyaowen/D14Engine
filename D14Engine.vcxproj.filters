@@ -42,9 +42,6 @@
     <ClCompile Include="Core\UI\UIResourceUtils.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="ThirdParty\BitmapIO\BitmapIO.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Core\UI\Window.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -54,13 +51,10 @@
     <ClCompile Include="Core\UI\Cursor.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Core\UI\FlatButton.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Core\UI\ShadowStyle.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Core\UI\SolidColorStyle.cpp">
+    <ClCompile Include="Core\UI\SolidStyle.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Core\UI\Button.cpp">
@@ -76,6 +70,36 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Core\UI\MaskStyle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\TextBox.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\StrokeStyle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\Timer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\MathUtils.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\GraphUtils.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\GpuBuffer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\StaticSampler.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\FrameResource.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Renderer\DebugController.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\AnimTextBox.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -134,9 +158,6 @@
     <ClInclude Include="ThirdParty\DirectX\d3dx12.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="ThirdParty\BitmapIO\BitmapIO.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Include\UI\Application.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -158,13 +179,10 @@
     <ClInclude Include="Core\Include\UI\Window.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Include\UI\FlatButton.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Include\UI\ShadowStyle.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Include\UI\SolidColorStyle.h">
+    <ClInclude Include="Core\Include\UI\SolidStyle.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Core\Include\UI\Button.h">
@@ -183,6 +201,15 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Core\Include\UI\MaskStyle.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\StrokeStyle.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\TextBox.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\AnimTextBox.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

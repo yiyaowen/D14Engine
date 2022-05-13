@@ -70,8 +70,8 @@ namespace d14engine::renderer
         void OnWindowResize();
         void DrawNextFrame();
 
-        void D3D12BeginEvent() { FlushCmdQueue(); ResetCmdList(); }
-        void D3D12EndEvent() { SubmitCmdList(); FlushCmdQueue(); }
+        void BeginExternalEvent();
+        void EndExternalEvent();
 
         void SelectMainCamera(ShrdPtrParam<IMainCamera> camera);
 
@@ -79,21 +79,27 @@ namespace d14engine::renderer
         // Try to minimize the number of associated cameras to improve performance.
         void AssociateCamera(ShrdPtrParam<ICamera> camera);
         void DisassociateCamera(ShrdPtrParam<ICamera> camera);
+        bool FindAssociatedCamera(ShrdPtrParam<ICamera> camera);
 
         void AddPreDrawLayer(ShrdPtrParam<IDrawLayer> layer);
         void RemovePreDrawLayer(ShrdPtrParam<IDrawLayer> layer);
+        bool FindPreDrawLayer(ShrdPtrParam<IDrawLayer> layer);
 
         void AddPostDrawLayer(ShrdPtrParam<IDrawLayer> layer);
         void RemovePostDrawLayer(ShrdPtrParam<IDrawLayer> layer);
+        bool FindPostDrawLayer(ShrdPtrParam<IDrawLayer> layer);
 
         void AddPreDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer);
         void RemovePreDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer);
+        bool FindPreDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer);
 
         void AddPostDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer);
         void RemovePostDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer);
+        bool FindPostDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer);
 
         void AddDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d);
         void RemoveDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d);
+        bool FindDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d);
 
         // This field will be assigned as the origin create info passed in ctor.
         // The program shares these config fields during the renderer's lifecycle,
@@ -365,11 +371,16 @@ namespace d14engine::renderer
         void ResetCmdList();
         void SubmitCmdList();
 
+        // With this field, we can skip the updating when wait for paint-events
+        // while still protect the circular buffer data's safety at the same time.
+        bool skipUpdating = true;
+
         void Update();
         void Draw();
+        void Tick();
 
-        using DrawObjectSet = std::set<SharedPtr<IDrawObject>, ISortable<IDrawObject>::UniqueAscending>;
-        using DrawLayerObjectMap = std::map<SharedPtr<IDrawLayer>, DrawObjectSet, ISortable<IDrawLayer>::UniqueAscending>;
+        using DrawObjectSet = ISortable<IDrawObject>::ShrdPrioritySet;
+        using DrawLayerObjectMap = ISortable<IDrawLayer>::ShrdPriorityMap<DrawObjectSet>;
 
         // Drawn before 2D objects.
         DrawLayerObjectMap preDrawLayerObjects;
@@ -391,7 +402,7 @@ namespace d14engine::renderer
             cmdList->ClearDepthStencilView(dsvHandle, clearFlags, depth, stencil, 0, nullptr);
         }
 
-        using DrawObject2DSet = std::set<SharedPtr<IDrawObject2D>, ISortable<IDrawObject2D>::UniqueAscending>;
+        using DrawObject2DSet = ISortable<IDrawObject2D>::ShrdPrioritySet;
 
         DrawObject2DSet drawObjects2D;
 

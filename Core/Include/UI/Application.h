@@ -21,14 +21,23 @@ namespace d14engine::ui
             Wstring name = L"D14Engine";
 
             bool showMaximized = false;
-            RECT rootWindowRect = DEFAULT_INITIAL_RECT;
-
-            constexpr static RECT DEFAULT_INITIAL_RECT = { -1, -1, -1, -1 };
+            Optional<RECT> rootWindowRect = std::nullopt;
         };
 
         static Application* APP;
-        static Renderer* RNDR;
-        static Cursor* CURSOR;
+
+        static Renderer* RENDERER;
+
+    private:
+        // This field indicates whether the renderer should be updated in the main while-loop.
+        // When the application keeps idle, there's no need to draw frames continuously;
+        // however, when there're objects that perform animation, i.e. ANIMATE_COUNT > 0,
+        // we have to draw frames in the main while-loop instead of waiting for paint-events.
+        static int ANIMATE_COUNT;
+
+    public:
+        static void IncreaseAnimateCount();
+        static void DecreaseAnimateCount();
 
         Application(int argc, wchar_t* argv[], const CreateInfo& info = {});
 
@@ -43,13 +52,46 @@ namespace d14engine::ui
         void AddUIObject(ShrdPtrParam<Panel> uiobj);
         void RemoveUIObject(ShrdPtrParam<Panel> uiobj);
 
-        void PinUIObject(ShrdPtrParam<Panel> uiobj);
-        void UnpinUIObject(ShrdPtrParam<Panel> uiobj);
+        void PinUIObject(WeakPtrParam<Panel> uiobj);
+        void UnpinUIObject(WeakPtrParam<Panel> uiobj);
+
+        // Return whether target UI object is found in the container.
+        bool FindUIObject(ShrdPtrParam<Panel> uiobj);
+        bool FindHitUIObject(WeakPtrParam<Panel> uiobj);
+        bool FindPinnedUIObject(WeakPtrParam<Panel> uiobj);
+        bool FindDiffPinnedUIObject(WeakPtrParam<Panel> uiobj);
+
+        // Return RawPtr directly since the main cursor must be valid
+        // during the whole lifecycle of the application.
+        Cursor* MainCursor();
+
+        WeakPtr<Panel> GetFocusedUIObject();
+        // A simple tool method that calls GetFocusedUIObject.
+        bool IsUIObjectFocused(WeakPtrParam<Panel> uiobj);
+
+        // This method will change the focused immediately, which is dangerous
+        // when the application events are delivering. See FocusUIObjectLater.
+        void FocusUIObject(WeakPtrParam<Panel> uiobj);
+
+        // When the focused is changed some UI object containers will be updated,
+        // which will cause undefined result if the application events are delivering.
+        // Use FocusUIObjectLater instead to change the focused in the callbacks,
+        // and the actual focus transition will be performed in the next event pass.
+        void FocusUIObjectLater(WeakPtrParam<Panel> uiobj);
+
+    private:
+        // This method will update the diff-pinned set immediately, which is dangerous
+        // when the container is being iterated. See UpdateDiffPinnedUIObjectsLater.
+        void UpdateDiffPinnedUIObjects();
+
+        // It's dangerous to call UpdateDiffPinnedUIObjects directly in any callback,
+        // since the diff-pinned set is probably being iterated and thus the updating
+        // may cause unexpected result. Similar to the method above (focus-uiobj),
+        // it's recommended to post a msg instead and update in the next event pass.
+        void UpdateDiffPinnedUIObjectsLater();
 
     private:
         static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-
-        Wstring m_name;
 
         HWND m_window;
 
@@ -57,19 +99,41 @@ namespace d14engine::ui
         // and the renderer will take over the display work of all UI objects.
         // Thus all child windows are rendered within the main window,
         // where the main window actually becomes the "desktop" of the application.
-        SharedPtr<Renderer> m_renderer;
+        UniquePtr<Renderer> m_renderer;
 
         using UIObjectSet = std::unordered_set<SharedPtr<Panel>>;
 
         UIObjectSet m_uiobjects;
 
-        using UIObjectPrioritySet = std::set<SharedPtr<Panel>, ISortable<Panel>::UniqueAscending>;
+        using UIObjectPrioritySet = ISortable<Panel>::WeakPrioritySet;
 
         UIObjectPrioritySet m_hitUIObjects;
         
         // Pinned objects would still receive UI events even though they are not hit.
-        UIObjectPrioritySet m_pinnedUIObject;
+        UIObjectPrioritySet m_pinnedUIObjects, m_diffPinnedUIObjects;
 
         SharedPtr<Cursor> m_cursor;
+
+        WeakPtr<Panel> m_focusedUIObject;
+
+    public:
+        enum class CustomWinMessage
+        {
+            ChangeFocusedUIObject = WM_USER,
+            UpdateRootDiffPinnedUIObjects = WM_USER + 1,
+            UpdateMiscDiffPinnedUIObjects = WM_USER + 2
+        };
+
+        void PostCustomWinMessage(CustomWinMessage message);
+
+    private:
+        WeakPtr<Panel> m_nextFocusedCandidate;
+
+        using NextDiffPinnedUpdatingCandidates = std::set <WeakPtr<Panel>, std::owner_less<WeakPtr<Panel>>>;
+
+        NextDiffPinnedUpdatingCandidates m_nextDiffPinnedUpdatingCandidates;
+
+    public:
+        void MarkDiffPinnedUpdatingCandidate(WeakPtrParam<Panel> uiobj);
     };
 }

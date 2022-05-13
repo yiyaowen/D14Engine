@@ -13,32 +13,32 @@ namespace d14engine::ui
 
     void Window::LoadCommonResources()
     {
-        // Title panel, linear gradient, bottom -> top, 60% B -> 90% B.
+        // Title panel, linear gradient, bottom -> top, 80% B -> 95% B.
         {
             ComPtr<ID2D1GradientStopCollection> coll;
             D2D1_GRADIENT_STOP stop[] =
             {
-                { 0.0f, { 0.6f, 0.6f, 0.6f, 1.0f } },
-                { 1.0f, { 0.9f, 0.9f, 0.9f, 1.0f } }
+                { 0.0f, { 0.8f, 0.8f, 0.8f, 1.0f } },
+                { 1.0f, { 0.95f, 0.95f, 0.95f, 1.0f } }
             };
-            THROW_IF_FAILED(Application::RNDR->d2d1DeviceContext->
+            THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->
                 CreateGradientStopCollection(stop, _countof(stop), &coll));
 
-            THROW_IF_FAILED(Application::RNDR->d2d1DeviceContext->
+            THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->
                 CreateLinearGradientBrush({}, coll.Get(), &g_titleBarPanelBrush));
         }
-        // Decorative bar, linear gradient, left -> right, Firebrick -> DarkRed.
+        // Decorative bar, linear gradient, left -> right, Crimson -> Firebrick.
         {
             ComPtr<ID2D1GradientStopCollection> coll;
             D2D1_GRADIENT_STOP stop[] =
             {
-                { 0.0f, (D2D1::ColorF)D2D1::ColorF::Firebrick },
-                { 1.0f, (D2D1::ColorF)D2D1::ColorF::DarkRed }
+                { 0.0f, (D2D1::ColorF)D2D1::ColorF::Crimson },
+                { 1.0f, (D2D1::ColorF)D2D1::ColorF::Firebrick }
             };
-            THROW_IF_FAILED(Application::RNDR->d2d1DeviceContext->
+            THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->
                 CreateGradientStopCollection(stop, _countof(stop), &coll));
 
-            THROW_IF_FAILED(Application::RNDR->d2d1DeviceContext->
+            THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->
                 CreateLinearGradientBrush({}, coll.Get(), &g_decorativeBarBrush));
         }
     }
@@ -48,14 +48,14 @@ namespace d14engine::ui
         Panel(rect, UIResu::SOLID_COLOR_BRUSH),
         MaskStyle((UINT)Width(), (UINT)Height()),
         ShadowStyle((UINT)Width(), (UINT)Height()),
-        SolidColorStyle((D2D1::ColorF)D2D1::ColorF::Gainsboro)
+        SolidStyle({ 0.95f, 0.95f, 0.95f, 1.0f })
     {
         // We want the window can respond to sizing event when the cursor moves on shadow frame.
         shadowExtensionOffset = 6.0f;
 
         // Create title bar text label.
         {
-            m_title = std::make_shared<Label>(text, RelativeTitlePanelRect());
+            m_title = MakeUIObject<Label>(text, RelativeTitlePanelRect());
 
             // Note p is m_title. Also see Panel's OnParentSize for details.
             m_title->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e)
@@ -64,19 +64,20 @@ namespace d14engine::ui
                 // Hide if there's no enough space.
                 // Use 248.0f since the minimize button is 124.0f from title bar right,
                 // and the title text is going to be placed in the horizontal center.
-                if (e.size.width - 248.0f > l->GetTextLayoutMetrics().width)
+                if (e.size.width - 248.0f > l->TextLayoutMetrics().width)
                 {
-                    l->SetD2D1ObjectVisible(true);
                     l->Resize(e.size.width, 32.0f);
+
+                    // Change the extra visibility flag instead of use SetVisible(true)
+                    // to avoid the title showing incorrectly when the window is small.
+                    m_isTitleVisible = true;
                 }
-                else l->SetD2D1ObjectVisible(false);
+                else m_isTitleVisible = false;
             };
         }
         // Create close button text icon.
         {
-            m_closeX = std::make_shared<Label>(
-                // Add a little transparency to the text to make it looks like an icon.
-                L"x", RelativeCloseButtonRect(), (D2D1::ColorF)D2D1::ColorF::Black, 0.8f);
+            m_closeX = MakeUIObject<Label>(L"x", RelativeCloseButtonRect());
 
             // Note p is m_closeX. Also see Panel's OnParentSize for details.
             m_closeX->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e)
@@ -88,6 +89,12 @@ namespace d14engine::ui
             // however, it only looks correct when we set the alignment to FAR instead of CENTER.
             m_closeX->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_FAR;
         }
+    }
+
+    void Window::OnInitializeFinish()
+    {
+        m_title->SetParent(shared_from_this());
+        m_closeX->SetParent(shared_from_this());
     }
 
     void Window::OnMinimize()
@@ -242,32 +249,74 @@ namespace d14engine::ui
 
     void Window::Set3BrothersButtonBrushState(bool isHover, bool isDown)
     {
-        float opaque = 0.1f; // Idle
-        if (isHover) opaque = 0.6f;
-        if (isDown) opaque = 1.0f;
+        float opaque = 0.0f; // Idle
+        if (isHover) opaque = 0.8f;
+        if (isDown) opaque = 0.6f;
 
-        UIResu::SOLID_COLOR_BRUSH->SetColor((D2D1::ColorF)D2D1::ColorF::Gray);
+        UIResu::SOLID_COLOR_BRUSH->SetColor((D2D1::ColorF)D2D1::ColorF::Black);
         UIResu::SOLID_COLOR_BRUSH->SetOpacity(opaque);
     }
 
-    void Window::Set3BrothersIconBrushState()
+    void Window::Set3BrothersIconBrushState(bool isHover, bool isDown)
     {
-        UIResu::SOLID_COLOR_BRUSH->SetColor((D2D1::ColorF)D2D1::ColorF::Black);
-        UIResu::SOLID_COLOR_BRUSH->SetOpacity(0.6f);
+        auto color = (D2D1::ColorF)D2D1::ColorF::Black; // Idle
+        if (isHover) color = (D2D1::ColorF)D2D1::ColorF::White;
+        if (isDown) color = (D2D1::ColorF)D2D1::ColorF::White;
+
+        float opaque = 0.8f; // Idle
+        if (isHover) opaque = 0.8f;
+        if (isDown) opaque = 0.6f;
+
+        UIResu::SOLID_COLOR_BRUSH->SetColor(color);
+        UIResu::SOLID_COLOR_BRUSH->SetOpacity(opaque);
     }
 
-    void Window::OnRendererDrawD2D1Layer(Renderer* rndr)
+    void Window::OnRendererDrawD2D1Layer(Renderer* RENDERER)
     {
-        Panel::DrawChildrenLayers(rndr);
+        Panel::DrawChildrenLayers(RENDERER);
 
-        BeginDrawOnMask(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        // Shape of Shadow
+        BeginDrawOnShadow(RENDERER->d2d1DeviceContext.Get());
         {
-            Panel::DrawChildrenObjects(rndr);
+            // The color of shadow canvas can be designated casually,
+            // where alpha channel will decide the shape of shadow.
+            RENDERER->d2d1DeviceContext->Clear((D2D1::ColorF)D2D1::ColorF::Black);
         }
-        EndDrawOnMask(rndr->d2d1DeviceContext.Get());
+        EndDrawOnShadow(RENDERER->d2d1DeviceContext.Get());
+
+        // Children on Mask
+        BeginDrawOnMask(RENDERER->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        {
+            // In case the title displays incorrectly when the window is small.
+            // For example, SetVisible(true) is called by the user unexpectedly.
+            bool tmpFlag = m_title->IsVisible();
+            m_title->SetVisible(tmpFlag && m_isTitleVisible);
+
+            // Adjust the appearance of the close button icon dynamically.
+            if (m_isCloseDown)
+            {
+                m_closeX->textColor = (D2D1::ColorF)D2D1::ColorF::White;
+                m_closeX->textColorOpaque = 0.8f;
+            }
+            else if (m_isCloseHover)
+            {
+                m_closeX->textColor = (D2D1::ColorF)D2D1::ColorF::White;
+                m_closeX->textColorOpaque = 1.0f;
+            }
+            else // Close button is idle.
+            {
+                m_closeX->textColor = (D2D1::ColorF)D2D1::ColorF::Black;
+                m_closeX->textColorOpaque = 1.0f;
+            }
+
+            Panel::DrawChildrenObjects(RENDERER);
+
+            m_title->SetVisible(tmpFlag);
+        }
+        EndDrawOnMask(RENDERER->d2d1DeviceContext.Get());
     }
 
-    void Window::OnRendererDrawD2D1Object(Renderer* rndr)
+    void Window::OnRendererDrawD2D1Object(Renderer* RENDERER)
     {
         // Shadow
         {
@@ -277,14 +326,14 @@ namespace d14engine::ui
             UIResu::SHADOW_EFFECT->SetValue(D2D1_SHADOW_PROP_COLOR, shadowColor);
             UIResu::SHADOW_EFFECT->SetValue(D2D1_SHADOW_PROP_OPTIMIZATION, shadowOptimization);
 
-            rndr->d2d1DeviceContext->DrawImage(UIResu::SHADOW_EFFECT.Get(), AbsolutePosition());
+            RENDERER->d2d1DeviceContext->DrawImage(UIResu::SHADOW_EFFECT.Get(), AbsolutePosition());
         }
         // Background
         {
             UIResu::SOLID_COLOR_BRUSH->SetColor(solidColor);
             UIResu::SOLID_COLOR_BRUSH->SetOpacity(solidColorOpaque);
 
-            Panel::DrawBackground(rndr);
+            Panel::DrawBackground(RENDERER);
         }
         // Title Bar
         {
@@ -294,7 +343,7 @@ namespace d14engine::ui
             g_titleBarPanelBrush->SetStartPoint({ tpr.left, tpr.bottom });
             g_titleBarPanelBrush->SetEndPoint({ tpr.left, tpr.top });
 
-            rndr->d2d1DeviceContext->FillRectangle(tpr, g_titleBarPanelBrush.Get());
+            RENDERER->d2d1DeviceContext->FillRectangle(tpr, g_titleBarPanelBrush.Get());
 
             // Title text had been drawn as child.
 
@@ -304,14 +353,20 @@ namespace d14engine::ui
             g_decorativeBarBrush->SetStartPoint({ dbr.left, dbr.top });
             g_decorativeBarBrush->SetEndPoint({ dbr.right, dbr.top });
 
-            rndr->d2d1DeviceContext->FillRectangle(dbr, g_decorativeBarBrush.Get());
+            RENDERER->d2d1DeviceContext->FillRectangle(dbr, g_decorativeBarBrush.Get());
         }
         // 3 Brothers
         {
             // Close Button
             {
-                Set3BrothersButtonBrushState(m_isCloseHover, m_isCloseDown);
-                rndr->d2d1DeviceContext->FillRectangle(CloseButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+                float opaque = 0.0f; // Idle
+                if (m_isCloseHover) opaque = 1.0f;
+                if (m_isCloseDown) opaque = 0.8f;
+
+                UIResu::SOLID_COLOR_BRUSH->SetColor({ 0.78f, 0.12f, 0.2f, 1.0f });
+                UIResu::SOLID_COLOR_BRUSH->SetOpacity(opaque);
+
+                RENDERER->d2d1DeviceContext->FillRectangle(CloseButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
 
                 // Close icon had been drawn as child.
             }
@@ -320,21 +375,21 @@ namespace d14engine::ui
                 auto mbr = MaximizeButtonRect();
 
                 Set3BrothersButtonBrushState(m_isMaximizeHover, m_isMaximizeDown);
-                rndr->d2d1DeviceContext->FillRectangle(mbr, UIResu::SOLID_COLOR_BRUSH.Get());
+                RENDERER->d2d1DeviceContext->FillRectangle(mbr, UIResu::SOLID_COLOR_BRUSH.Get());
 
-                Set3BrothersIconBrushState();
-                rndr->d2d1DeviceContext->DrawRectangle(MaximizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get(), 2.0f);
+                Set3BrothersIconBrushState(m_isMaximizeHover, m_isMaximizeDown);
+                RENDERER->d2d1DeviceContext->DrawRectangle(MaximizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get(), 2.0f);
             }
             // Minimize Button
             {
                 Set3BrothersButtonBrushState(m_isMinimizeHover, m_isMinimizeDown);
-                rndr->d2d1DeviceContext->FillRectangle(MinimizeButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+                RENDERER->d2d1DeviceContext->FillRectangle(MinimizeButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
 
-                Set3BrothersIconBrushState();
-                rndr->d2d1DeviceContext->FillRectangle(MinimizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+                Set3BrothersIconBrushState(m_isMinimizeHover, m_isMinimizeDown);
+                RENDERER->d2d1DeviceContext->FillRectangle(MinimizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get());
             }
         }
-        PostMaskToScene(rndr->d2d1DeviceContext.Get(), m_absoluteRect);
+        PostMaskToScene(RENDERER->d2d1DeviceContext.Get(), m_absoluteRect);
     }
 
     bool Window::IsHit(Event::Point& p)
@@ -369,21 +424,27 @@ namespace d14engine::ui
 
         if (e.status.LeftDown())
         {
-            // Update button states of 3 brothers.
-            m_isCloseDown = Mathu::IsInside(p, CloseButtonRect());
-            m_isMaximizeDown = Mathu::IsInside(p, MaximizeButtonRect());
-            m_isMinimizeDown = Mathu::IsInside(p, MinimizeButtonRect());
+            if (m_is3BrothersEnabled)
+            {
+                // Update button states of 3 brothers.
+                m_isCloseDown = Mathu::IsInside(p, CloseButtonRect());
+                m_isMaximizeDown = Mathu::IsInside(p, MaximizeButtonRect());
+                m_isMinimizeDown = Mathu::IsInside(p, MinimizeButtonRect());
+            }
+            else m_isCloseDown = m_isMaximizeDown = m_isMinimizeDown = false;
 
             // Check whether is dragging title bar.
             if (!m_isCloseHover && !m_isMaximizeHover && !m_isMinimizeHover)
             {
                 if (m_isDragTitleBar = Mathu::IsInside(p, TitlePanelRect()))
                 {
+                    m_is3BrothersEnabled = false;
+
                     m_dragPoint = AbsoluteToSelfCoord(p);
                     // In case the mouse dashes out of the boundary.
                     Application::APP->PinUIObject(shared_from_this());
 
-                    Application::CURSOR->SetIcon(Cursor::IconIndex::Move);
+                    Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::Move);
                 }
             }
 
@@ -395,6 +456,8 @@ namespace d14engine::ui
             // Check whether is holding window frame.
             if (m_isLeftSizing || m_isTopSizing || m_isRightSizing || m_isBottomSizing)
             {
+                m_is3BrothersEnabled = false;
+
                 m_sizingOffset = AbsoluteToSelfCoord(p);
 
                 if (m_sizingOffset.x > 0) m_sizingOffset.x -= Width();
@@ -424,6 +487,7 @@ namespace d14engine::ui
             // Always cancel dragging if left button up.
             if (m_isDragTitleBar)
             {
+                m_is3BrothersEnabled = true;
                 m_isDragTitleBar = false;
                 Application::APP->UnpinUIObject(shared_from_this());
             }
@@ -431,6 +495,7 @@ namespace d14engine::ui
             // Always cancel sizing if left button up.
             if (m_isLeftSizing || m_isTopSizing || m_isRightSizing || m_isBottomSizing)
             {
+                m_is3BrothersEnabled = true;
                 m_isLeftSizing = m_isTopSizing = m_isRightSizing = m_isBottomSizing = false;
                 Application::APP->UnpinUIObject(shared_from_this());
             }
@@ -442,27 +507,31 @@ namespace d14engine::ui
     {
         auto p = e.cursorPoint;
         
-        // Update button states of 3 brothers.
-        if (!Mathu::IsInside(p, CloseButtonRect()))
+        if (m_is3BrothersEnabled)
         {
-            m_isCloseHover = false;
-            m_isCloseDown = false;
-        }
-        else m_isCloseHover = true;
+            // Update button states of 3 brothers.
+            if (!Mathu::IsInside(p, CloseButtonRect()))
+            {
+                m_isCloseHover = false;
+                m_isCloseDown = false;
+            }
+            else m_isCloseHover = true;
 
-        if (!Mathu::IsInside(p, MaximizeButtonRect()))
-        {
-            m_isMaximizeHover = false;
-            m_isMaximizeDown = false;
-        }
-        else m_isMaximizeHover = true;
+            if (!Mathu::IsInside(p, MaximizeButtonRect()))
+            {
+                m_isMaximizeHover = false;
+                m_isMaximizeDown = false;
+            }
+            else m_isMaximizeHover = true;
 
-        if (!Mathu::IsInside(p, MinimizeButtonRect()))
-        {
-            m_isMinimizeHover = false;
-            m_isMinimizeDown = false;
+            if (!Mathu::IsInside(p, MinimizeButtonRect()))
+            {
+                m_isMinimizeHover = false;
+                m_isMinimizeDown = false;
+            }
+            else m_isMinimizeHover = true;
         }
-        else m_isMinimizeHover = true;
+        else m_isCloseHover = m_isMaximizeHover = m_isMinimizeHover = false;
 
         // Trigger movement if drag title bar.
         if (m_isDragTitleBar)
@@ -470,10 +539,9 @@ namespace d14engine::ui
             auto relative = AbsoluteToRelative(p);
             Move(relative.x - m_dragPoint.x, relative.y - m_dragPoint.y);
 
-            Application::CURSOR->SetIcon(Cursor::IconIndex::Move);
+            Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::Move);
         }
-
-        // Trigger resizing if hold window frame.
+        else // Trigger resizing if hold window frame.
         {
             auto relative = AbsoluteToRelative(p);
 
@@ -483,17 +551,23 @@ namespace d14engine::ui
             relative.x -= m_sizingOffset.x;
             relative.y -= m_sizingOffset.y;
 
+            float minWidth = MinimalWidth();
+            float minHeight = MinimalHeight();
+
             // Left
 
             if (m_isLeftSizing && !m_isTopSizing && !m_isRightSizing && !m_isBottomSizing)
             {
                 float afterWidth = m_rect.right - relative.x;
 
-                if (afterWidth >= MinimalWidth())
+                if (afterWidth < minWidth)
                 {
-                    Transform(relative.x, m_rect.top, afterWidth, Height());
+                    afterWidth = minWidth;
+                    relative.x = m_rect.right - minWidth;
                 }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::HorzSize);
+                Transform(relative.x, m_rect.top, afterWidth, Height());
+
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::HorzSize);
             }
 
             // Right
@@ -502,11 +576,13 @@ namespace d14engine::ui
             {
                 float afterWidth = relative.x - m_rect.left;
 
-                if (afterWidth >= MinimalWidth())
+                if (afterWidth < minWidth)
                 {
-                    Transform(m_rect.left, m_rect.top, afterWidth, Height());
+                    afterWidth = minWidth;
                 }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::HorzSize);
+                Transform(m_rect.left, m_rect.top, afterWidth, Height());
+
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::HorzSize);
             }
 
             // Top
@@ -515,11 +591,14 @@ namespace d14engine::ui
             {
                 float afterHeight = m_rect.bottom - relative.y;
 
-                if (afterHeight >= MinimalHeight())
+                if (afterHeight < minHeight)
                 {
-                    Transform(m_rect.left, relative.y, Width(), afterHeight);
+                    afterHeight = minHeight;
+                    relative.y = m_rect.bottom - minHeight;
                 }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::VertSize);
+                Transform(m_rect.left, relative.y, Width(), afterHeight);
+
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::VertSize);
             }
 
             // Bottom
@@ -528,11 +607,13 @@ namespace d14engine::ui
             {
                 float afterHeight = relative.y - m_rect.top;
 
-                if (afterHeight >= MinimalHeight())
+                if (afterHeight < minHeight)
                 {
-                    Transform(m_rect.left, m_rect.top, Width(), afterHeight);
+                    afterHeight = minHeight;
                 }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::VertSize);
+                Transform(m_rect.left, m_rect.top, Width(), afterHeight);
+
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::VertSize);
             }
 
             // Left Top
@@ -542,25 +623,19 @@ namespace d14engine::ui
                 float afterWidth = m_rect.right - relative.x;
                 float afterHeight = m_rect.bottom - relative.y;
 
-                float minWidth = MinimalWidth();
-                float minHeight = MinimalHeight();
+                if (afterWidth < minWidth)
+                {
+                    afterWidth = minWidth;
+                    relative.x = m_rect.right - minWidth;
+                }
+                if (afterHeight < minHeight)
+                {
+                    afterHeight = minHeight;
+                    relative.y = m_rect.bottom - minHeight;
+                }
+                Transform(relative.x, relative.y, afterWidth, afterHeight);
 
-                minWidth = max(minWidth, afterWidth);
-                minHeight = max(minHeight, afterHeight);
-
-                if (afterWidth >= MinimalWidth() && afterHeight >= MinimalHeight())
-                {
-                    Transform(relative.x, relative.y, minWidth, minHeight);
-                }
-                else if (afterWidth >= MinimalWidth())
-                {
-                    Transform(relative.x, m_rect.top, minWidth, Height());
-                }
-                else if (afterHeight >= MinimalHeight())
-                {
-                    Transform(m_rect.left, relative.y, Width(), minHeight);
-                }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::MainDiagSize);
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::MainDiagSize);
             }
 
             // Left Bottom
@@ -570,25 +645,18 @@ namespace d14engine::ui
                 float afterWidth = m_rect.right - relative.x;
                 float afterHeight = relative.y - m_rect.top;
 
-                float minWidth = MinimalWidth();
-                float minHeight = MinimalHeight();
+                if (afterWidth < minWidth)
+                {
+                    afterWidth = minWidth;
+                    relative.x = m_rect.right - minWidth;
+                }
+                if (afterHeight < minHeight)
+                {
+                    afterHeight = minHeight;
+                }
+                Transform(relative.x, m_rect.top, afterWidth, afterHeight);
 
-                minWidth = max(minWidth, afterWidth);
-                minHeight = max(minHeight, afterHeight);
-
-                if (afterWidth >= MinimalWidth() && afterHeight >= MinimalHeight())
-                {
-                    Transform(relative.x, m_rect.top, minWidth, minHeight);
-                }
-                else if (afterWidth >= MinimalWidth())
-                {
-                    Transform(relative.x, m_rect.top, minWidth, Height());
-                }
-                else if (afterHeight >= MinimalHeight())
-                {
-                    Transform(m_rect.left, m_rect.top, Width(), minHeight);
-                }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::BackDiagSize);
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::BackDiagSize);
             }
 
             // Right Top
@@ -598,25 +666,18 @@ namespace d14engine::ui
                 float afterWidth = relative.x - m_rect.left;
                 float afterHeight = m_rect.bottom - relative.y;
 
-                float minWidth = MinimalWidth();
-                float minHeight = MinimalHeight();
+                if (afterWidth < minWidth)
+                {
+                    afterWidth = minWidth;
+                }
+                if (afterHeight < minHeight)
+                {
+                    afterHeight = minHeight;
+                    relative.y = m_rect.bottom - minHeight;
+                }
+                Transform(m_rect.left, relative.y, afterWidth, afterHeight);
 
-                minWidth = max(minWidth, afterWidth);
-                minHeight = max(minHeight, afterHeight);
-
-                if (afterWidth >= MinimalWidth() && afterHeight >= MinimalHeight())
-                {
-                    Transform(m_rect.left, relative.y, minWidth, minHeight);
-                }
-                else if (afterWidth >= MinimalWidth())
-                {
-                    Transform(m_rect.left, m_rect.top, minWidth, Height());
-                }
-                else if (afterHeight >= MinimalHeight())
-                {
-                    Transform(m_rect.left, relative.y, Width(), minHeight);
-                }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::BackDiagSize);
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::BackDiagSize);
             }
 
             // Right Bottom
@@ -626,25 +687,17 @@ namespace d14engine::ui
                 float afterWidth = relative.x - m_rect.left;
                 float afterHeight = relative.y - m_rect.top;
 
-                float minWidth = MinimalWidth();
-                float minHeight = MinimalHeight();
+                if (afterWidth < minWidth)
+                {
+                    afterWidth = minWidth;
+                }
+                if (afterHeight < minHeight)
+                {
+                    afterHeight = minHeight;
+                }
+                Transform(m_rect.left, m_rect.top, afterWidth, afterHeight);
 
-                minWidth = max(minWidth, afterWidth);
-                minHeight = max(minHeight, afterHeight);
-
-                if (afterWidth >= MinimalWidth() && afterHeight >= MinimalHeight())
-                {
-                    Transform(m_rect.left, m_rect.top, minWidth, minHeight);
-                }
-                else if (afterWidth >= MinimalWidth())
-                {
-                    Transform(m_rect.left, m_rect.top, minWidth, Height());
-                }
-                else if (afterHeight >= MinimalHeight())
-                {
-                    Transform(m_rect.left, m_rect.top, Width(), minHeight);
-                }
-                Application::CURSOR->SetIcon(Cursor::IconIndex::MainDiagSize);
+                Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::MainDiagSize);
             }
 
             // No Sizing
@@ -662,7 +715,7 @@ namespace d14engine::ui
                     }
                     else m_isRightHover = m_isBottomHover = true;
 
-                    Application::CURSOR->SetIcon(Cursor::IconIndex::MainDiagSize);
+                    Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::MainDiagSize);
                 }
                 else if ((p.x <= m_absoluteRect.left && p.y >= m_absoluteRect.bottom) ||
                          (p.x >= m_absoluteRect.right && p.y <= m_absoluteRect.top))
@@ -673,7 +726,7 @@ namespace d14engine::ui
                     }
                     else m_isRightHover = m_isTopHover = true;
 
-                    Application::CURSOR->SetIcon(Cursor::IconIndex::BackDiagSize);
+                    Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::BackDiagSize);
                 }
                 else if (p.x <= m_absoluteRect.left || p.x >= m_absoluteRect.right)
                 {
@@ -683,7 +736,7 @@ namespace d14engine::ui
                     }
                     else m_isRightHover = true;
 
-                    Application::CURSOR->SetIcon(Cursor::IconIndex::HorzSize);
+                    Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::HorzSize);
                 }
                 else if (p.y <= m_absoluteRect.top || p.y >= m_absoluteRect.bottom)
                 {
@@ -693,11 +746,15 @@ namespace d14engine::ui
                     }
                     else m_isBottomHover = true;
 
-                    Application::CURSOR->SetIcon(Cursor::IconIndex::VertSize);
+                    Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::VertSize);
                 }
-                else if (!m_isDragTitleBar) Application::CURSOR->SetIcon(Cursor::IconIndex::Arrow);
+                else Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::Arrow);
             }
         }
-        return Panel::OnMouseMoveHelper(e);
+        if (m_isDragTitleBar || m_isLeftSizing || m_isTopSizing || m_isRightSizing || m_isBottomSizing)
+        {
+            return false; // Prevent children from responding to UI event during special operations.
+        }
+        else return Panel::OnMouseMoveHelper(e);
     }
 }

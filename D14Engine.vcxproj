@@ -115,7 +115,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
@@ -157,25 +157,31 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Core\Renderer\Camera.cpp" />
+    <ClCompile Include="Core\Renderer\DebugController.cpp" />
+    <ClCompile Include="Core\Renderer\FrameResource.cpp" />
+    <ClCompile Include="Core\Renderer\GpuBuffer.cpp" />
+    <ClCompile Include="Core\Renderer\GraphUtils.cpp" />
     <ClCompile Include="Core\Renderer\Letterbox.cpp" />
+    <ClCompile Include="Core\Renderer\MathUtils.cpp" />
     <ClCompile Include="Core\Renderer\Renderer.cpp" />
+    <ClCompile Include="Core\Renderer\StaticSampler.cpp" />
+    <ClCompile Include="Core\Renderer\Timer.cpp" />
+    <ClCompile Include="Core\UI\AnimTextBox.cpp" />
+    <ClCompile Include="Core\UI\TextBox.cpp" />
+    <ClCompile Include="Core\UI\StrokeStyle.cpp" />
     <ClCompile Include="Test\TestMain.cpp" />
-    <ClCompile Include="ThirdParty\BitmapIO\BitmapIO.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="Core\UI\Application.cpp" />
     <ClCompile Include="Core\UI\BitmapUtils.cpp" />
     <ClCompile Include="Core\UI\Button.cpp" />
     <ClCompile Include="Core\UI\ElevatedButton.cpp" />
     <ClCompile Include="Core\UI\FilledButton.cpp" />
-    <ClCompile Include="Core\UI\FlatButton.cpp" />
     <ClCompile Include="Core\UI\Cursor.cpp" />
     <ClCompile Include="Core\UI\MaskStyle.cpp" />
     <ClCompile Include="Core\UI\OutlinedButton.cpp" />
     <ClCompile Include="Core\UI\Panel.cpp" />
     <ClCompile Include="Core\UI\Label.cpp" />
     <ClCompile Include="Core\UI\ShadowStyle.cpp" />
-    <ClCompile Include="Core\UI\SolidColorStyle.cpp" />
+    <ClCompile Include="Core\UI\SolidStyle.cpp" />
     <ClCompile Include="Core\UI\UIResourceUtils.cpp" />
     <ClCompile Include="Core\UI\Window.cpp" />
   </ItemGroup>
@@ -197,7 +203,9 @@
     <ClInclude Include="Common\RuntimeError.h" />
     <ClInclude Include="Core\Include\Renderer\StaticSampler.h" />
     <ClInclude Include="Core\Include\Renderer\Timer.h" />
-    <ClInclude Include="ThirdParty\BitmapIO\BitmapIO.h" />
+    <ClInclude Include="Core\Include\UI\AnimTextBox.h" />
+    <ClInclude Include="Core\Include\UI\StrokeStyle.h" />
+    <ClInclude Include="Core\Include\UI\TextBox.h" />
     <ClInclude Include="ThirdParty\DirectX\d3dx12.h" />
     <ClInclude Include="Core\Include\UI\Application.h" />
     <ClInclude Include="Core\Include\UI\BitmapUtils.h" />
@@ -205,14 +213,13 @@
     <ClInclude Include="Core\Include\UI\ElevatedButton.h" />
     <ClInclude Include="Core\Include\UI\Event.h" />
     <ClInclude Include="Core\Include\UI\FilledButton.h" />
-    <ClInclude Include="Core\Include\UI\FlatButton.h" />
     <ClInclude Include="Core\Include\UI\Cursor.h" />
     <ClInclude Include="Core\Include\UI\MaskStyle.h" />
     <ClInclude Include="Core\Include\UI\OutlinedButton.h" />
     <ClInclude Include="Core\Include\UI\Panel.h" />
     <ClInclude Include="Core\Include\UI\Label.h" />
     <ClInclude Include="Core\Include\UI\ShadowStyle.h" />
-    <ClInclude Include="Core\Include\UI\SolidColorStyle.h" />
+    <ClInclude Include="Core\Include\UI\SolidStyle.h" />
     <ClInclude Include="Core\Include\UI\UIResourceUtils.h" />
     <ClInclude Include="Core\Include\UI\Window.h" />
   </ItemGroup>

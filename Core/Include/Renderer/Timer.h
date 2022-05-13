@@ -6,11 +6,7 @@ namespace d14engine::renderer
 {
     struct Timer
     {
-        Timer()
-        {
-            QueryPerformanceFrequency((LARGE_INTEGER*)&tickCntsPerSecond);
-            secsPerTickCount = 1.0 / tickCntsPerSecond;
-        }
+        Timer();
 
         __int64 tickCntsPerSecond = 0;
         double secsPerTickCount = 0;
@@ -21,38 +17,17 @@ namespace d14engine::renderer
         double elapsedSecsAtLastPause = 0;
         double elapsedSecsSinceResume = 0;
 
-        double ElapsedSecs() { return elapsedSecsAtLastPause + elapsedSecsSinceResume; }
+        double ElapsedSecs();
 
         double deltaSecs = 0;
 
-        void Start()
-        {
-            QueryPerformanceCounter((LARGE_INTEGER*)&baseTickCount);
-            currTickCount = baseTickCount;
-            // Reset all performance counts.
-            elapsedSecsAtLastPause = elapsedSecsSinceResume = deltaSecs = 0;
-        }
+        void Start();
 
-        void Tick()
-        {
-            if (mIsPause) return; // Stike when stopped or paused.
-            QueryPerformanceCounter((LARGE_INTEGER*)&currTickCount);
-            double currElapsedSecs = (currTickCount - baseTickCount) * secsPerTickCount;
-            deltaSecs = currElapsedSecs - elapsedSecsSinceResume;
-            elapsedSecsSinceResume = currElapsedSecs;
-        }
+        void Tick();
 
-        void Stop()
-        {
-            mIsPause = true;
-            elapsedSecsAtLastPause = ElapsedSecs();
-            elapsedSecsSinceResume = deltaSecs = 0;
-        }
+        void Stop();
 
-        void Resume()
-        {
-            mIsPause = false;
-        }
+        void Resume();
 
     private:
         bool mIsPause = false;

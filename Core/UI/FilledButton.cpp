@@ -6,51 +6,49 @@ namespace d14engine::ui
 {
     FilledButton::FilledButton(
         WstrParam text,
-        ComPtrParam<ID2D1Bitmap1> icon,
         const D2D1_RECT_F& rect,
-        float roundRadius)
+        float roundRadius,
+        ComPtrParam<ID2D1Bitmap1> icon,
+        const D2D1_COLOR_F& normalColor,
+        const D2D1_COLOR_F& activeColor)
         :
-        Button(text, icon, rect, roundRadius)
+        Button(text, rect, roundRadius)
     {
-        solidColor = (D2D1::ColorF)D2D1::ColorF::Firebrick;
-        solidColorOpaque = 1.0f;
-
-        if (textLabel != nullptr)
+        appearances[(size_t)State::Idle] =
         {
-            textLabel->textColor = (D2D1::ColorF)D2D1::ColorF::WhiteSmoke;
-        }
-    }
-
-    bool FilledButton::OnMouseButtonHelper(MouseButtonEvent& e)
-    {
-        Button::OnMouseButtonHelper(e);
-
-        if (e.status.LeftDown())
+            normalColor, // solid color
+            1.0f, // solid color opaque
+            icon, // bitmap
+            1.0f, // bitmap opaque
+            (D2D1::ColorF)D2D1::ColorF::Black, // text color
+            1.0f, // text color opaque
+            (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+            0.0f, // stroke color opaque
+            0.0f // stroke width
+        };
+        appearances[(size_t)State::Hover] =
         {
-            solidColor = (D2D1::ColorF)D2D1::ColorF::DarkRed;
-        }
-        else if (e.status.LeftUp())
+            activeColor, // solid color
+            1.0f, // solid color opaque
+            icon, // bitmap
+            1.0f, // bitmap opaque
+            (D2D1::ColorF)D2D1::ColorF::Black, // text color
+            1.0f, // text color opaque
+            (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+            0.0f, // stroke color opaque
+            0.0f // stroke width
+        };
+        appearances[(size_t)State::Down] =
         {
-            solidColor = { 0.62f, 0.12f, 0.12f, 1.0f };
-        }
-        return false;
-    }
-
-    bool FilledButton::OnMouseEnterHelper(MouseEnterEvent& e)
-    {
-        Button::OnMouseEnterHelper(e);
-
-        solidColor = { 0.62f, 0.12f, 0.12f, 1.0f };
-
-        return false;
-    }
-
-    bool FilledButton::OnMouseLeaveHelper(MouseLeaveEvent& e)
-    {
-        Button::OnMouseLeaveHelper(e);
-
-        solidColor = (D2D1::ColorF)D2D1::ColorF::Firebrick;
-
-        return false;
+            activeColor, // solid color
+            1.0f, // solid color opaque
+            icon, // bitmap
+            0.5f, // bitmap opaque
+            (D2D1::ColorF)D2D1::ColorF::Black, // text color
+            0.5f, // text color opaque
+            (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+            0.0f, // stroke color opaque
+            0.0f // stroke width
+        };
     }
 }

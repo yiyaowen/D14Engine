@@ -85,25 +85,24 @@ namespace d14engine::renderer
     {
         Update();
         Draw();
+        Tick();
+    }
 
-        // The renderer's frame resource count is equal to its back buffer count,
-        // i.e. the frame resource index is exactly the back buffer index.
-        currFrameIndex = swapChain->GetCurrentBackBufferIndex();
+    void Renderer::BeginExternalEvent()
+    {
+        d2d1DeviceContext->SetTarget(nullptr);
 
-        static UINT FRAME_COUNT_SUM = 0;
-        static double ONE_SEC_POINT = 0;
+        d3d11DeviceContext->ClearState();
+        d3d11DeviceContext->Flush();
 
-        timer->Tick();
+        FlushCmdQueue();
+        ResetCmdList();
+    }
 
-        ++FRAME_COUNT_SUM;
-        // Update FPS info if already pass one second.
-        if (timer->ElapsedSecs() >= ONE_SEC_POINT + 1)
-        {
-            fps = FRAME_COUNT_SUM;
-            // Prepare for next second.
-            FRAME_COUNT_SUM = 0;
-            ONE_SEC_POINT = timer->ElapsedSecs();
-        }
+    void Renderer::EndExternalEvent()
+    {
+        SubmitCmdList();
+        FlushCmdQueue();
     }
 
     void Renderer::SelectMainCamera(ShrdPtrParam<IMainCamera> camera)
@@ -128,6 +127,11 @@ namespace d14engine::renderer
         associatedCameras.erase(camera);
     }
 
+    bool Renderer::FindAssociatedCamera(ShrdPtrParam<ICamera> camera)
+    {
+        return associatedCameras.find(camera) != associatedCameras.end();
+    }
+
     void Renderer::AddPreDrawLayer(ShrdPtrParam<IDrawLayer> layer)
     {
         if (layer == nullptr) return;
@@ -139,6 +143,11 @@ namespace d14engine::renderer
         preDrawLayerObjects.erase(layer);
     }
 
+    bool Renderer::FindPreDrawLayer(ShrdPtrParam<IDrawLayer> layer)
+    {
+        return preDrawLayerObjects.find(layer) != preDrawLayerObjects.end();
+    }
+
     void Renderer::AddPostDrawLayer(ShrdPtrParam<IDrawLayer> layer)
     {
         if (layer == nullptr) return;
@@ -148,6 +157,11 @@ namespace d14engine::renderer
     void Renderer::RemovePostDrawLayer(ShrdPtrParam<IDrawLayer> layer)
     {
         postDrawLayerObjects.erase(layer);
+    }
+
+    bool Renderer::FindPostDrawLayer(ShrdPtrParam<IDrawLayer> layer)
+    {
+        return postDrawLayerObjects.find(layer) != postDrawLayerObjects.end();
     }
 
     void Renderer::AddPreDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer)
@@ -173,6 +187,17 @@ namespace d14engine::renderer
         }
     }
 
+    bool Renderer::FindPreDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer)
+    {
+        auto pLayer = preDrawLayerObjects.find(layer);
+
+        if (pLayer != preDrawLayerObjects.end())
+        {
+            return pLayer->second.find(obj) != pLayer->second.end();
+        }
+        else return false;
+    }
+
     void Renderer::AddPostDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer)
     {
         if (obj == nullptr || layer == nullptr) return;
@@ -196,6 +221,17 @@ namespace d14engine::renderer
         }
     }
 
+    bool Renderer::FindPostDrawObject(ShrdPtrParam<IDrawObject> obj, ShrdPtrParam<IDrawLayer> layer)
+    {
+        auto pLayer = postDrawLayerObjects.find(layer);
+
+        if (pLayer != postDrawLayerObjects.end())
+        {
+            return pLayer->second.find(obj) != pLayer->second.end();
+        }
+        else return false;
+    }
+
     void Renderer::AddDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d)
     {
         if (obj2d == nullptr) return;
@@ -205,6 +241,11 @@ namespace d14engine::renderer
     void Renderer::RemoveDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d)
     {
         drawObjects2D.erase(obj2d);
+    }
+
+    bool Renderer::FindDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d)
+    {
+        return drawObjects2D.find(obj2d) != drawObjects2D.end();
     }
 
     void Renderer::EnterFullscreenMode()
@@ -655,7 +696,7 @@ namespace d14engine::renderer
         deviceInfo.settings.msaa.enable = commonInfo.enableMSAA;
         deviceInfo.settings.msaa.sampleCount = commonInfo.msaaSampleCount;
         // Use the best available MSAA quality level or the user designated quality level.
-        deviceInfo.settings.msaa.qualityLevel = min(deviceInfo.features.msaa.qualityLevel, commonInfo.msaaQualityLevel);
+        deviceInfo.settings.msaa.qualityLevel = std::min(deviceInfo.features.msaa.qualityLevel, commonInfo.msaaQualityLevel);
     }
 
     void Renderer::CheckTearingConfig()
@@ -1049,7 +1090,8 @@ namespace d14engine::renderer
         wrappedBuffer.Reset();
 
         d2d1DeviceContext->SetTarget(nullptr);
-        d2d1DeviceContext->Flush();
+        // Don't flush the d2d1 device context here since it's redundant and invalid.
+        // It doesn't flush the d3d11 device context and may fail if called outside the BeginDraw/EndDraw call.
 
         d3d11DeviceContext->ClearState();
         d3d11DeviceContext->Flush();
@@ -1097,11 +1139,12 @@ namespace d14engine::renderer
             WaitForSingleObject(hEvent, INFINITE);
             CloseHandle(hEvent);
         }
+        if (skipUpdating) return;
 
         CurrFrameResource()->ResetCmdList(cmdList.Get(), FrameResource::CmdLayer::Update);
 
         // Start updaing dynamic resources.
-        auto updateDrawLayerObjects = [&](DrawLayerObjectMap& target)
+        const static auto updateDrawLayerObjects = [&](DrawLayerObjectMap& target)
         {
             for (auto& layer : target)
             {
@@ -1191,6 +1234,28 @@ namespace d14engine::renderer
 
         CurrFrameResource()->fenceValue = ++fenceValue;
         THROW_IF_FAILED(cmdQueue->Signal(fence.Get(), fenceValue));
+
+        // The renderer's frame resource count is equal to its back buffer count,
+        // i.e. the frame resource index is exactly the back buffer index.
+        currFrameIndex = swapChain->GetCurrentBackBufferIndex();
+    }
+
+    void Renderer::Tick()
+    {
+        static UINT FRAME_COUNT_SUM = 0;
+        static double ONE_SEC_POINT = 0;
+
+        timer->Tick();
+
+        ++FRAME_COUNT_SUM;
+        // Update FPS info if already pass one second.
+        if (timer->ElapsedSecs() >= ONE_SEC_POINT + 1)
+        {
+            fps = FRAME_COUNT_SUM;
+            // Prepare for next second.
+            FRAME_COUNT_SUM = 0;
+            ONE_SEC_POINT = timer->ElapsedSecs();
+        }
     }
 
     void Renderer::DrawD3D12Layer(DrawLayerObjectMap& target)

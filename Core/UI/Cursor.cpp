@@ -16,7 +16,7 @@ namespace d14engine::ui
             PUSH_ICON_PATH(Arrow, { 0.0f, 0.0f }),
             PUSH_ICON_PATH(Hand, { -6.0f, 0.0f }),
             PUSH_ICON_PATH(Move, { -16.0f, -16.0f }),
-            PUSH_ICON_PATH(Ibeam, { 0.0f, 0.0f }),
+            PUSH_ICON_PATH(Ibeam, { -16.0f, -16.0f }),
             PUSH_ICON_PATH(HorzSize, { -16.0f, -16.0f }),
             PUSH_ICON_PATH(VertSize, { -16.0f, -16.0f }),
             PUSH_ICON_PATH(MainDiagSize, { -16.0f, -16.0f }),
@@ -32,7 +32,7 @@ namespace d14engine::ui
 
             icon.bitmap = Bitmapu::LoadBitmapFromFile(
                 std::get<1>(path),
-                Application::RNDR->commonInfo.assetsPath + L"Images/Cursors/WinClassics/");
+                Application::RENDERER->commonInfo.assetsPath + L"Images/Cursors/WinClassics/");
 
             icon.displayOffset = std::get<2>(path);
         }
@@ -80,8 +80,24 @@ namespace d14engine::ui
     {
         if (bitmap != nullptr)
         {
-            rndr->d2d1DeviceContext->DrawBitmap(
-                bitmap.Get(), Mathu::Offset(m_absoluteRect, m_displayOffset));
+            // Invert the destination color for ibeam icon to make it more eye-catching,
+            // which is a common practice to improve the readability in text rendering.
+            if (bitmap == m_basicIcons[(size_t)IconIndex::Ibeam].bitmap)
+            {
+                // One of the disadvantages is that the ibeam icon can't be resized dynamically,
+                // since the composition of DrawImage won't do resampling for the processed image.
+                rndr->d2d1DeviceContext->DrawImage(
+                    bitmap.Get(),
+                    &Mathu::Offset(AbsolutePosition(), m_displayOffset),
+                    nullptr,
+                    D2D1_INTERPOLATION_MODE_LINEAR,
+                    D2D1_COMPOSITE_MODE_MASK_INVERT);
+            }
+            else // Display other icons in general way.
+            {
+                rndr->d2d1DeviceContext->DrawBitmap(
+                    bitmap.Get(), Mathu::Offset(m_absoluteRect, m_displayOffset));
+            }
         }
     }
 }

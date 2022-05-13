@@ -2,6 +2,7 @@
 
 #include "UI/MaskStyle.h"
 
+#include "UI/Application.h"
 #include "UI/BitmapUtils.h"
 
 namespace d14engine::ui
@@ -9,15 +10,21 @@ namespace d14engine::ui
     MaskStyle::MaskStyle(
         UINT maskBitmapWidth,
         UINT maskBitmapHeight,
-        BYTE maskBitmapPadding)
+        D2D1_COLOR_F maskColor)
+        :
+        maskColor(maskColor)
     {
-        LoadMaskBitmap(maskBitmapWidth, maskBitmapHeight, maskBitmapPadding);
+        LoadMaskBitmap(maskBitmapWidth, maskBitmapHeight);
     }
 
-    void MaskStyle::LoadMaskBitmap(UINT width, UINT height, BYTE padding)
+    void MaskStyle::LoadMaskBitmap(UINT width, UINT height)
     {
-        m_maskBitmap = Bitmapu::CreateBytePaddingBitmap(
-            padding, width, height, D2D1_BITMAP_OPTIONS_TARGET);
+        Application::RENDERER->BeginExternalEvent();
+
+        m_maskBitmap = Bitmapu::LoadBitmapFromMemory(
+            width, height, nullptr, D2D1_BITMAP_OPTIONS_TARGET);
+
+        Application::RENDERER->EndExternalEvent();
     }
 
     void MaskStyle::BeginDrawOnMask(ID2D1DeviceContext* context, const D2D1_MATRIX_3X2_F& transform)
@@ -26,7 +33,8 @@ namespace d14engine::ui
 
         context->BeginDraw();
         context->SetTransform(transform);
-        context->Clear({ 0.0f, 0.0f, 0.0f, 0.0f });
+
+        context->Clear(maskColor);
     }
 
     void MaskStyle::EndDrawOnMask(ID2D1DeviceContext* context)

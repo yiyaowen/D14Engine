@@ -1,13 +1,17 @@
 ﻿#pragma once
 
 // Standard Library
+#include <algorithm>
 #include <array>
 #include <exception>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -32,11 +36,22 @@ namespace d14engine
     template<typename T>
     using UniqPtrParam = const UniquePtr<T>&;
 
+    template<typename T>
+    using Optional = std::optional<T>;
+    template<typename T>
+    using OptParam = const Optional<T>&;
+
     using String = std::string;
     using StrParam = const String&;
 
+    using StringView = std::string_view;
+    using StrViewParam = const StringView&;
+
     using Wstring = std::wstring;
     using WstrParam = const Wstring&;
+
+    using WstringView = std::wstring_view;
+    using WstrViewParam = const WstringView&;
 }
 
 // Windows & DirectX SDK
@@ -84,6 +99,3 @@ namespace d14engine
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "WindowsCodecs.lib")
-
-// Bitmap Input/Output
-#include "BitmapIO/BitmapIO.h"
