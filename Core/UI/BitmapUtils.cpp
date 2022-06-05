@@ -23,7 +23,7 @@ namespace d14engine::ui
     ComPtr<ID2D1BitmapBrush1> BitmapUtils::BitmapToBrush(ID2D1Bitmap1* texture)
     {
         ComPtr<ID2D1BitmapBrush1> brush;
-        THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->CreateBitmapBrush(texture, &brush));
+        THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->CreateBitmapBrush(texture, &brush));
         return brush;
     }
 
@@ -52,7 +52,7 @@ namespace d14engine::ui
             WICBitmapPaletteTypeCustom));
 
         ComPtr<ID2D1Bitmap1> bitmap;
-        THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->CreateBitmapFromWicBitmap(
+        THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->CreateBitmapFromWicBitmap(
             formatConverter.Get(),
             nullptr,
             &bitmap));
@@ -64,7 +64,7 @@ namespace d14engine::ui
         UINT width, UINT height, BYTE* data, D2D1_BITMAP_OPTIONS options)
     {
         // Creating D2D1 bitmap depends on window dpi info.
-        FLOAT dpi = (FLOAT)GetDpiForWindow(Application::RENDERER->window.ptr);
+        FLOAT dpi = (FLOAT)GetDpiForWindow(Application::APP->MainRenderer()->window.ptr);
 
         D2D1_BITMAP_PROPERTIES1 props = D2D1::BitmapProperties1(
             options, // Create as common texture by default.
@@ -74,7 +74,7 @@ namespace d14engine::ui
         ComPtr<ID2D1Bitmap1> bitmap;
         // To simplify the method, we decide that the pixel format must be B8G8R8A8;
         // thus the pitch (byte count of each scanline) can be calculated as 4 * width.
-        THROW_IF_FAILED(Application::RENDERER->d2d1DeviceContext->CreateBitmap(
+        THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->CreateBitmap(
             { width, height },
             data,
             4 * width,

@@ -9,33 +9,6 @@ namespace d14engine::ui
 {
     Application* Application::APP = nullptr;
 
-    Renderer* Application::RENDERER = nullptr;
-
-    int Application::ANIMATE_COUNT = 0;
-
-    void Application::IncreaseAnimateCount()
-    {
-        ANIMATE_COUNT++;
-
-        RENDERER->skipUpdating = false;
-        // Restart timer for updating when draw frames continuously.
-        RENDERER->timer->Start();
-    }
-
-    void Application::DecreaseAnimateCount()
-    {
-        ANIMATE_COUNT = std::max(--ANIMATE_COUNT, 0);
-
-        if (ANIMATE_COUNT == 0)
-        {
-            RENDERER->skipUpdating = true;
-            // Start followed by stop to reset and freeze timer.
-            // There's no need to tick timer when wait for paint-events.
-            RENDERER->timer->Start();
-            RENDERER->timer->Stop();
-        }
-    }
-
     Application::Application(int argc, wchar_t* argv[], const CreateInfo& info)
     {
         APP = this;
@@ -59,56 +32,52 @@ namespace d14engine::ui
 
         RegisterClass(&wndclass);
 
-        RECT rc = {};
-        // We have to decide the window's initial position and size manually
-        // since CW_USEDEFAULT doesn't work when set style to WS_POPUP.
-        SystemParametersInfo(SPI_GETWORKAREA, 0, &rc, 0);
-        int workAreaWidth = rc.right - rc.left;
-        int workAreaHeight = rc.bottom - rc.top;
+        // Note these results haven't been adjusted with DPI.
+        int workAreaWidth = GetSystemMetrics(SM_CXFULLSCREEN);
+        int workAreaHeight = GetSystemMetrics(SM_CYFULLSCREEN);
 
-        int x, y, width, height;
+        RECT initialRect = {};
         if (info.showMaximized)
         {
-            x = y = 0;
-            width = workAreaWidth;
-            height = workAreaHeight;
+            initialRect = { 0, 0, workAreaWidth, workAreaHeight };
         }
         else if (info.rootWindowRect.has_value())
         {
-            auto& userRect = info.rootWindowRect.value();
-            x = userRect.left;
-            y = userRect.top;
-            width = userRect.right - userRect.left;
-            height = userRect.bottom - userRect.top;
+            initialRect = info.rootWindowRect.value();
         }
         else // Show in default rectangle area.
         {
-            x = workAreaWidth / 10;
-            y = workAreaHeight / 12;
-            width = workAreaWidth * 4 / 5;
-            height = workAreaHeight * 5 / 6;
+            initialRect = { (workAreaWidth - 800) / 2, (workAreaHeight - 600) / 2, 0, 0 };
+            initialRect.right = initialRect.left + 800;
+            initialRect.bottom = initialRect.top + 600;
         }
 
+        // Only contain client area.
+        DWORD dwStyle = WS_POPUP;
+        // Prevent DWM from drawing again.
+        DWORD dwExStyle = WS_EX_NOREDIRECTIONBITMAP;
+
+        AdjustWindowRectExForDpi(&initialRect, dwStyle, FALSE, dwExStyle, GetDpiForSystem());
+
         THROW_IF_NULL(m_window = CreateWindowEx(
-            // Prevent DWM from drawing again.
-            WS_EX_NOREDIRECTIONBITMAP,
+            dwExStyle,
             info.name.c_str(),
             info.name.c_str(),
-            WS_POPUP,
-            x,
-            y,
-            width,
-            height,
+            dwStyle,
+            initialRect.left,
+            initialRect.top,
+            initialRect.right - initialRect.left,
+            initialRect.bottom - initialRect.top,
             nullptr,
             nullptr,
             hInstance,
             nullptr));
 
-        // Pass application instance pointer through the window user data,
-        // so that we can use the static method to handle all callbacks.
+        // Pass application instance pointer through window user data field,
+        // so that we can use the static method to handle instance callbacks.
         SetWindowLongPtr(m_window, GWLP_USERDATA, (LONG_PTR)this);
 
-        RENDERER = (m_renderer = std::make_unique<Renderer>(m_window)).get();
+        m_renderer = std::make_unique<Renderer>(m_window);
 
         // Initialize miscellaneous components.
         UIResu::Initialize();
@@ -118,7 +87,7 @@ namespace d14engine::ui
         Window::LoadCommonResources();
 
         // We don't want the cursor to receive any UI event, so only register draw parts.
-        (m_cursor = std::make_shared<Cursor>(Cursor::LoadBasicIconSeries()))->RegisterDrawObjects();
+        (m_cursor = MakeUIObject<Cursor>(Cursor::LoadBasicIconSeries()))->RegisterDrawObjects();
     }
 
     int Application::Run(const std::function<void(Application* app)>& onLaunch)
@@ -140,12 +109,35 @@ namespace d14engine::ui
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
-            if (ANIMATE_COUNT > 0)
+            if (m_animateCount > 0)
             {
                 m_renderer->DrawNextFrame();
             }
         }
         return (int)msg.wParam;
+    }
+
+    void Application::IncreaseAnimateCount()
+    {
+        ++m_animateCount;
+
+        m_renderer->skipUpdating = false;
+        // Don't use Start() here since it will reset the timer.
+        m_renderer->timer->Resume();
+    }
+
+    void Application::DecreaseAnimateCount()
+    {
+        m_animateCount = std::max(--m_animateCount, 0);
+
+        if (m_animateCount == 0)
+        {
+            m_renderer->skipUpdating = true;
+            // Start followed by stop to reset and freeze the timer.
+            // There's no need to tick when wait for paint-events.
+            m_renderer->timer->Start();
+            m_renderer->timer->Stop();
+        }
     }
 
     void Application::AddUIObject(ShrdPtrParam<Panel> uiobj)
@@ -242,6 +234,14 @@ namespace d14engine::ui
         PostCustomWinMessage(CustomWinMessage::ChangeFocusedUIObject);
     }
 
+    void Application::ChangeTheme(WstrViewParam themeName)
+    {
+        for (auto& uiobj : m_uiobjects)
+        {
+            uiobj->OnChangeTheme(themeName);
+        }
+    }
+
     void Application::UpdateDiffPinnedUIObjects()
     {
         m_diffPinnedUIObjects.clear();
@@ -272,7 +272,7 @@ namespace d14engine::ui
         }
         case WM_PAINT:
         {
-            if (ANIMATE_COUNT != 0) return 0;
+            if (app->m_animateCount != 0) return 0;
 
             if (app != nullptr && app->m_renderer != nullptr)
             {
@@ -280,26 +280,26 @@ namespace d14engine::ui
             }
             return 0;
         }
-        case WM_WINDOWPOSCHANGING:
+        case WM_SIZE:
         {
-            DefWindowProc(hwnd, message, wParam, lParam);
-            // Help reduce the possibility of window flicker/jitter.
-            ((WINDOWPOS*)lParam)->flags |= SWP_NOCOPYBITS;
-
             if (app != nullptr && app->m_renderer != nullptr)
             {
                 app->m_renderer->OnWindowResize();
                 // Notify the renderer to draw immediately after resized,
-                // which can reduce the possibility of content tearing.
+                // which could reduce the probability of content tearing.
                 app->m_renderer->DrawNextFrame();
             }
             return 0;
         }
         case WM_SETCURSOR:
         {
-            // Take over cursor drawing from GDI.
-            SetCursor(nullptr);
-            return 0;
+            if (LOWORD(lParam) == HTCLIENT)
+            {
+                // Take over client area's cursor drawing from GDI.
+                SetCursor(nullptr);
+                return 0;
+            }
+            return DefWindowProc(hwnd, message, wParam, lParam);
         }
         case WM_LBUTTONDOWN:
         case WM_LBUTTONUP:
@@ -336,7 +336,7 @@ namespace d14engine::ui
             // Only broadcast the event to those hit UI objects.
             ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsMouseButtonSensitive())
+                if (uiobj->appEventFlags.mouse.button)
                 {
                     if (e.status.LeftDown() && uiobj->isFocusable) e.focused = uiobj;
                     // Note the return boolean means whether to continue delivering the event.
@@ -346,7 +346,7 @@ namespace d14engine::ui
             });
             ISortable<Panel>::Foreach(app->m_diffPinnedUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsMouseButtonSensitive())
+                if (uiobj->appEventFlags.mouse.button)
                 {
                     // The focused should be selected from those actual hit objects,
                     // so there's no need to update mouse-button event's focused field.
@@ -380,7 +380,7 @@ namespace d14engine::ui
             // compare them to broadcast mouse enter & leave events.
             for (auto& uiobj : app->m_uiobjects)
             {
-                if (uiobj->IsHit(cursorPoint))
+                if (uiobj->appEventFlags.hitTest && uiobj->IsHit(cursorPoint))
                 {
                     currHitUIObjects.insert(uiobj);
                 }
@@ -394,7 +394,7 @@ namespace d14engine::ui
                 // Moved in just now, trigger OnMouseEnter event.
                 if (app->m_hitUIObjects.find(uiobj) == app->m_hitUIObjects.end())
                 {
-                    if (uiobj->IsMouseEnterSensitive())
+                    if (uiobj->appEventFlags.mouse.enter)
                     {
                         return uiobj->OnMouseEnter(mee);
                     }
@@ -410,7 +410,7 @@ namespace d14engine::ui
                 // Moved out just now, trigger OnMouseLeave event.
                 if (currHitUIObjects.find(uiobj) == currHitUIObjects.end())
                 {
-                    if (uiobj->IsMouseLeaveSensitive())
+                    if (uiobj->appEventFlags.mouse.leave)
                     {
                         return uiobj->OnMouseLeave(mle);
                     }
@@ -436,7 +436,7 @@ namespace d14engine::ui
             // Only broadcast the event to those hit UI objects.
             ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsMouseMoveSensitive())
+                if (uiobj->appEventFlags.mouse.move)
                 {
                     // Note the return boolean means whether to continue delivering the event.
                     return uiobj->OnMouseMove(e);
@@ -447,12 +447,26 @@ namespace d14engine::ui
 
             ISortable<Panel>::Foreach(app->m_diffPinnedUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsMouseMoveSensitive())
+                if (uiobj->appEventFlags.mouse.move)
                 {
                     return uiobj->OnMouseMove(e);
                 }
                 return false;
             });
+
+            // Register mouse-leave event for the root window.
+            TRACKMOUSEEVENT tme = {};
+            tme.cbSize = sizeof(TRACKMOUSEEVENT);
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = app->m_window;
+
+            TrackMouseEvent(&tme);
+            app->m_cursor->SetVisible(true);
+            return 0;
+        }
+        case WM_MOUSELEAVE:
+        {
+            app->m_cursor->SetVisible(false);
             return 0;
         }
         case WM_MOUSEWHEEL:
@@ -463,7 +477,7 @@ namespace d14engine::ui
                 GET_X_LPARAM(lParam),
                 GET_Y_LPARAM(lParam)
             };
-            // The origin cursor point in mouse-wheel event is relative to the screen.
+            // The cursor point in mouse-wheel event is relative to the screen.
             ScreenToClient(hwnd, &screenCursorPoint);
             e.cursorPoint =
             {
@@ -486,7 +500,7 @@ namespace d14engine::ui
             // Only broadcast the event to those hit UI objects.
             ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsMouseWheelSensitive())
+                if (uiobj->appEventFlags.mouse.wheel)
                 {
                     // Note the return boolean means whether to continue delivering the event.
                     return uiobj->OnMouseWheel(e);
@@ -495,7 +509,7 @@ namespace d14engine::ui
             });
             ISortable<Panel>::Foreach(app->m_diffPinnedUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsMouseWheelSensitive())
+                if (uiobj->appEventFlags.mouse.wheel)
                 {
                     return uiobj->OnMouseWheel(e);
                 }
@@ -523,7 +537,7 @@ namespace d14engine::ui
             // Only broadcast the event to those hit UI objects.
             ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsKeyboardSensitive())
+                if (uiobj->appEventFlags.keyboard)
                 {
                     // Note the return boolean means whether to continue delivering the event.
                     return uiobj->OnKeyboard(e);
@@ -532,7 +546,7 @@ namespace d14engine::ui
             });
             ISortable<Panel>::Foreach(app->m_diffPinnedUIObjects, [&](ShrdPtrParam<Panel> uiobj)
             {
-                if (uiobj->IsKeyboardSensitive())
+                if (uiobj->appEventFlags.keyboard)
                 {
                     return uiobj->OnKeyboard(e);
                 }

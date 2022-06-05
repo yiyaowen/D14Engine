@@ -30,6 +30,6 @@ namespace d14engine::renderer
         void Resume();
 
     private:
-        bool mIsPause = false;
+        bool m_isPause = false;
     };
 }

@@ -72,7 +72,7 @@ namespace d14engine::renderer
         // func's return boolean means whether to handle the remaining valid objects.
         static void Foreach(WeakPrioritySet& cont, const Function<bool(ShrdPtrParam<T>)>& func)
         {
-            bool skipElem = false;
+            bool continueDeliver = true;
 
             for ( auto itor = cont.begin() ;; )
             {
@@ -84,9 +84,9 @@ namespace d14engine::renderer
                 }
                 if (itor != cont.end())
                 {
-                    if (!skipElem)
+                    if (continueDeliver)
                     {
-                        skipElem = func(itor->lock());
+                        continueDeliver = func(itor->lock());
                     }
                     ++itor; // Move the increment operation here.
                 }

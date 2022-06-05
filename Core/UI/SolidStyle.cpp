@@ -5,9 +5,9 @@
 namespace d14engine::ui
 {
     SolidStyle::SolidStyle(
-        D2D1_COLOR_F solidColor,
-        float solidColorOpaque)
+        D2D1_COLOR_F backgroundColor,
+        float backgroundOpacity)
         :
-        solidColor(solidColor),
-        solidColorOpaque(solidColorOpaque) { }
+        backgroundColor(backgroundColor),
+        backgroundOpacity(backgroundOpacity) { }
 }

@@ -9,18 +9,18 @@ namespace d14engine::ui
     Label::Label(
         WstrParam text,
         D2D_RECT_F rect,
+        ComPtrParam<IDWriteTextFormat> format,
         D2D1_COLOR_F foregroundColor,
-        float foregroundColorOpaque,
+        float foregroundOpacity,
         D2D1_COLOR_F backgroundColor,
-        float backgroundColorOpaque,
-        ComPtrParam<IDWriteTextFormat> format)
+        float backgroundOpacity)
         :
         Panel(rect, UIResu::SOLID_COLOR_BRUSH),
-        SolidStyle(backgroundColor, backgroundColorOpaque),
+        SolidStyle(backgroundColor, backgroundOpacity),
         m_text(text),
-        textColor(foregroundColor),
-        textColorOpaque(foregroundColorOpaque),
-        format(format)
+        format(format),
+        foregroundColor(foregroundColor),
+        foregroundOpacity(foregroundOpacity)
     {
         m_textMetrics = GetTextLayoutMetrics(text);
     }
@@ -89,7 +89,7 @@ namespace d14engine::ui
         characterCount = std::min(characterCount, stringLength - characterOffset);
 
         ComPtr<IDWriteTextLayout> layout;
-        THROW_IF_FAILED(Application::RENDERER->dWriteFactory->CreateTextLayout(
+        THROW_IF_FAILED(Application::APP->MainRenderer()->dWriteFactory->CreateTextLayout(
             string + characterOffset,
             characterCount,
             format.Get(),
@@ -106,23 +106,58 @@ namespace d14engine::ui
         return textMetrics;
     }
 
-    void Label::OnRendererDrawD2D1Object(Renderer* rndr)
+    size_t Label::GetNearestCharacterGapIndex(float selfCoordOffsetX)
     {
-        // There's no need to restore the color and opaque value for the brush,
+        size_t characterGapIndex = 0;
+
+        float previousOffsetX = FLT_MAX;
+        float previousDistance = FLT_MAX;
+
+        // Search the closest character gap iteratively.
+        for (size_t i = 0; i <= m_text.size(); ++i)
+        {
+            // Query text length with specified character count.
+            auto metrics = GetTextLayoutMetrics(std::nullopt, 0, (UINT32)i);
+            // Don't use width here. The trailing whitespace should also be taken into account.
+            float currentOffsetX = metrics.left + metrics.widthIncludingTrailingWhitespace;
+
+            float currentDistance = std::abs(currentOffsetX - selfCoordOffsetX);
+
+            // Current distance is larger than previous means the gap is moving away from the point,
+            // which also means that the previous gap is exactly the closest one to the point,
+            // so we simply terminate the search and select the previous gap as the final result.
+            if (currentDistance >= previousDistance)
+            {
+                characterGapIndex = i - 1;
+                break;
+            }
+            else // Not the closest gap, so continue searching.
+            {
+                characterGapIndex = i;
+            }
+            previousOffsetX = currentOffsetX;
+            previousDistance = currentDistance;
+        }
+        return characterGapIndex;
+    }
+
+    void Label::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
+    {
+        // There's no need to restore the color and opacity for the brush,
         // since they will always be reset at the beginning of next draw call.
 
-        UIResu::SOLID_COLOR_BRUSH->SetColor(solidColor);
-        UIResu::SOLID_COLOR_BRUSH->SetOpacity(solidColorOpaque);
+        UIResu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
+        UIResu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
 
-        rndr->d2d1DeviceContext->FillRectangle(m_absoluteRect, UIResu::SOLID_COLOR_BRUSH.Get());
+        Panel::DrawBackground(rndr);
 
         // Also no need to restore the alignments for the text format.
 
         THROW_IF_FAILED(format->SetTextAlignment(alignment.horizontal));
         THROW_IF_FAILED(format->SetParagraphAlignment(alignment.vertical));
 
-        UIResu::SOLID_COLOR_BRUSH->SetColor(textColor);
-        UIResu::SOLID_COLOR_BRUSH->SetOpacity(textColorOpaque);
+        UIResu::SOLID_COLOR_BRUSH->SetColor(foregroundColor);
+        UIResu::SOLID_COLOR_BRUSH->SetOpacity(foregroundOpacity);
 
         rndr->d2d1DeviceContext->DrawTextW(
             m_text.c_str(),
@@ -132,5 +167,28 @@ namespace d14engine::ui
             UIResu::SOLID_COLOR_BRUSH.Get(),
             options,
             measuringMode);
+    }
+
+    void Label::OnChangeThemeHelper(WstrViewParam themeName)
+    {
+        Panel::OnChangeThemeHelper(themeName);
+
+        if (themeName == L"Light")
+        {
+            backgroundColor = (D2D1::ColorF)D2D1::ColorF::White;
+            backgroundOpacity = 0.0f;
+
+            foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
+            foregroundOpacity = 1.0f;
+        }
+        else if (themeName == L"Dark")
+        {
+            backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
+            backgroundOpacity = 0.0f;
+
+            // Don't use full-white. The color should be softer in dark mode.
+            foregroundColor = { 0.9f, 0.9f, 0.9f, 1.0f };
+            foregroundOpacity = 1.0f;
+        }
     }
 }

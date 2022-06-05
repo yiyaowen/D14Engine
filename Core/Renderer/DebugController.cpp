@@ -42,7 +42,12 @@ namespace d14engine::renderer
             * a render target in previous render passes, even if all states have already been cleared.
             * I guess the descriptor clearing is delayed after the associated resources are destroyed.
             */
-            D3D12_MESSAGE_ID_DESCRIPTOR_HANDLE_WITH_INVALID_RESOURCE
+            D3D12_MESSAGE_ID_DESCRIPTOR_HANDLE_WITH_INVALID_RESOURCE,
+            /*
+            * The application allows drawing empty scissor rectangle, so we simply ignore this warning.
+            * For example, D2D1 needs to draw an empty rectangle (0,0,0,0) if minimal-size is (0,0).
+            */
+            D3D12_MESSAGE_ID_DRAW_EMPTY_SCISSOR_RECTANGLE
         };
 
         D3D12_INFO_QUEUE_FILTER filter = {};

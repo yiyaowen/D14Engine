@@ -13,15 +13,12 @@ namespace d14engine::ui
 
         D2D1_COLOR_F maskColor;
 
-    protected:
-        ComPtr<ID2D1Bitmap1> m_maskBitmap;
+        ComPtr<ID2D1Bitmap1> maskBitmap;
 
         void LoadMaskBitmap(UINT width, UINT height);
 
         void BeginDrawOnMask(ID2D1DeviceContext* context, const D2D1_MATRIX_3X2_F& transform = D2D1::Matrix3x2F::Identity());
 
         void EndDrawOnMask(ID2D1DeviceContext* context);
-
-        void PostMaskToScene(ID2D1DeviceContext* context, const D2D1_RECT_F& destinationRectangle);
     };
 }

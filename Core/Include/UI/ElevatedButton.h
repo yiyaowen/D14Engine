@@ -7,7 +7,7 @@
 
 namespace d14engine::ui
 {
-    struct ElevatedButton : FilledButton, ShadowStyle
+    struct ElevatedButton : FilledButton, protected ShadowStyle
     {
         ElevatedButton(
             WstrParam text,
@@ -20,12 +20,14 @@ namespace d14engine::ui
         // Override interface methods.
 
         // IDrawObject2D
-        void OnRendererDrawD2D1Layer(Renderer* rndr) override;
+        void OnRendererDrawD2D1LayerHelper(Renderer* rndr) override;
 
-        void OnRendererDrawD2D1Object(Renderer* rndr) override;
+        void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
 
         // Panel
         void OnSizeHelper(SizeEvent& e) override;
+
+        void OnChangeThemeHelper(WstrViewParam themeName) override;
 
         bool OnMouseButtonHelper(MouseButtonEvent& e) override;
 

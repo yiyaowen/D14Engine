@@ -8,11 +8,22 @@ namespace d14engine::ui
     {
         static void Initialize();
 
+    public:
+        // Pick the alternative character if "shift" key pressed.
+        struct PrintableCharacter { WCHAR normal, alternative; };
+
+        using KeyboardLayoutMap = std::unordered_map<int /* Virtual-Key Code */, PrintableCharacter>;
+
+        static KeyboardLayoutMap US_KEYBOARD_LAYOUT; // US standard keyboard layout.
+
+    public:
+        static Optional<Wstring> GetClipboardText(HWND hWndNewOwner = nullptr);
+
+        static void SetClipboardText(WstrViewParam content, HWND hWndNewOwner = nullptr);
+
     private:
-        struct SystemFontName
-        {
-            Wstring family, locale;
-        };
+        struct SystemFontName { Wstring family, locale; };
+
         struct SystemFontNameSetHash
         {
             size_t operator() (const SystemFontName& elem) const
@@ -52,7 +63,7 @@ namespace d14engine::ui
             DWRITE_FONT_STRETCH fontStretch = DWRITE_FONT_STRETCH_NORMAL);
 
         // Some resources can be customized at runtime, so there's no need to create multiple copies.
-        // For example, a solid color brush's color and opaque can be changed before drawing,
+        // For example, a solid color brush's color and opacity can be changed before drawing,
         // so we can use the same brush in everywhere and change its properties dynamically,
         // in which way a lot of duplicated memory spaces can be saved to improve performance.
 
@@ -61,7 +72,6 @@ namespace d14engine::ui
 
         static ComPtr<ID2D1SolidColorBrush> SOLID_COLOR_BRUSH;
 
-    public:
         static void LoadCommonEffects();
 
         static ComPtr<ID2D1Effect> SHADOW_EFFECT;

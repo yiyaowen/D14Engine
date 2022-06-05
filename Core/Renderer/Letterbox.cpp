@@ -54,11 +54,11 @@ namespace d14engine::renderer
                 nullptr, nullptr, "PS", "ps_5_0", compileFlags, 0, &pixelShader, &error));
 #else
             THROW_IF_FAILED(D3DCompileFromFile((
-                rndr->originCreateInfo.assetsPath + L"Shaders/Letterbox.hlsl").c_str(),
+                rndr->commonInfo.assetsPath + L"Shaders/Letterbox.hlsl").c_str(),
                 nullptr, nullptr, "VS", "vs_5_0", compileFlags, 0, &vertexShader, &error));
 
             THROW_IF_FAILED(D3DCompileFromFile((
-                rndr->originCreateInfo.assetsPath + L"Shaders/Letterbox.hlsl").c_str(),
+                rndr->commonInfo.assetsPath + L"Shaders/Letterbox.hlsl").c_str(),
                 nullptr, nullptr, "PS", "ps_5_0", compileFlags, 0, &pixelShader, &error));
 #endif
             D3D12_INPUT_ELEMENT_DESC inputLayout[] =

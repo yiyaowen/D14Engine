@@ -13,6 +13,8 @@ namespace d14engine::ui
         SolidStyle((D2D1::ColorF)D2D1::ColorF::White, 1.0f),
         m_visibleTextRect({ roundRadius, 0.0f, Width() - roundRadius, Height() })
     {
+        m_takeOverChildrenDrawing = true;
+
         isFocusable = true;
 
         roundRadiusX = roundRadiusY = roundRadius;
@@ -40,9 +42,9 @@ namespace d14engine::ui
         {
             m_hiliteTextLabel = MakeUIObject<Label>(L"", D2D1_RECT_F{ 0.0f, 0.0f, 0.0f, 0.0f });
 
-            m_hiliteTextLabel->textColor = (D2D1::ColorF)D2D1::ColorF::White;
-            m_hiliteTextLabel->solidColor = (D2D1::ColorF)D2D1::ColorF::CornflowerBlue;
-            m_hiliteTextLabel->solidColorOpaque = 1.0f;
+            m_hiliteTextLabel->foregroundColor = (D2D1::ColorF)D2D1::ColorF::White;
+            m_hiliteTextLabel->backgroundColor = (D2D1::ColorF)D2D1::ColorF::CornflowerBlue;
+            m_hiliteTextLabel->backgroundOpacity = 1.0f;
 
             m_hiliteTextLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
         }
@@ -50,6 +52,8 @@ namespace d14engine::ui
 
     void TextBox::OnInitializeFinish()
     {
+        Panel::OnInitializeFinish();
+
         // Show hilite text above normal text.
         m_textLabel->SetD2D1ObjectPriority(0);
         m_hiliteTextLabel->SetD2D1ObjectPriority(1);
@@ -67,56 +71,68 @@ namespace d14engine::ui
     {
         m_textLabel->SetText(text);
 
-        SetHiliteTextRange({ 0, 0 });
         SetIndicatorPosition(0);
+        SetHiliteTextRange({ 0, 0 });
+
+        OnTextChange();
     }
 
     void TextBox::SetText(Wstring&& text)
     {
         m_textLabel->SetText(std::move(text));
 
-        SetHiliteTextRange({ 0, 0 });
         SetIndicatorPosition(0);
+        SetHiliteTextRange({ 0, 0 });
+
+        OnTextChange();
     }
 
     void TextBox::AppendTextFragment(WstrViewParam fragment)
     {
         m_textLabel->AppendTextFragment(fragment);
+
+        OnTextChange();
     }
 
     void TextBox::EraseTextFragment(const CharacterRange& range)
     {
         m_textLabel->EraseTextFragment(range);
+
+        OnTextChange();
     }
 
     void TextBox::InsertTextFragment(WstrViewParam fragment, size_t offset)
     {
         m_textLabel->InsertTextFragment(fragment, offset);
+
+        OnTextChange();
     }
 
     void TextBox::ModifyTextFragment(WstrViewParam fragment, const CharacterRange& range)
     {
         m_textLabel->ModifyTextFragment(fragment, range);
+
+        OnTextChange();
     }
 
     void TextBox::SetTextForegroundColor(const D2D1_COLOR_F& color)
     {
-        m_textLabel->textColor = color;
+        m_textLabel->foregroundColor = color;
     }
 
-    void TextBox::SetTextForegroundColorOpaque(float opaque)
+    void TextBox::SetTextForegroundOpacity(float opacity)
     {
-        m_textLabel->textColorOpaque = opaque;
+        m_textLabel->foregroundOpacity = opacity;
     }
 
     void TextBox::SetTextBackgroundColor(const D2D1_COLOR_F& color)
     {
-        m_textLabel->solidColor = color;
+        m_textLabel->backgroundColor = color;
     }
 
-    void TextBox::SetTextBackgroundColorOpaque(float opaque)
+    void TextBox::SetTextBackgroundOpacity(float opacity)
     {
-        m_textLabel->solidColorOpaque = opaque;
+        m_textLabel->backgroundOpacity = opacity;
     }
 
     const Wstring& TextBox::HiliteText()
@@ -128,16 +144,20 @@ namespace d14engine::ui
     {
         m_hiliteTextLabel->SetText(text);
         
-        EraseTextFragment(m_hiliteTextRange);
-        InsertTextFragment(text, m_hiliteTextRange.offset);
+        m_textLabel->EraseTextFragment(m_hiliteTextRange);
+        m_textLabel->InsertTextFragment(text, m_hiliteTextRange.offset);
+
+        OnTextChange();
     }
 
     void TextBox::SetHiliteText(Wstring&& text)
     {
         m_hiliteTextLabel->SetText(text);
 
-        EraseTextFragment(m_hiliteTextRange);
-        InsertTextFragment(text, m_hiliteTextRange.offset);
+        m_textLabel->EraseTextFragment(m_hiliteTextRange);
+        m_textLabel->InsertTextFragment(text, m_hiliteTextRange.offset);
+
+        OnTextChange();
     }
 
     const TextBox::CharacterRange& TextBox::HiliteTextRange()
@@ -182,22 +202,22 @@ namespace d14engine::ui
 
     void TextBox::SetHiliteTextForegroundColor(const D2D1_COLOR_F& color)
     {
-        m_hiliteTextLabel->textColor = color;
+        m_hiliteTextLabel->foregroundColor = color;
     }
 
-    void TextBox::SetHiliteTextForegroundColorOpaque(float opaque)
+    void TextBox::SetHiliteTextForegroundOpacity(float opacity)
     {
-        m_hiliteTextLabel->textColorOpaque = opaque;
+        m_hiliteTextLabel->foregroundOpacity = opacity;
     }
 
     void TextBox::SetHiliteTextBackgroundColor(const D2D1_COLOR_F& color)
     {
-        m_hiliteTextLabel->solidColor = color;
+        m_hiliteTextLabel->backgroundColor = color;
     }
 
-    void TextBox::SetHiliteTextBackgroundColorOpaque(float opaque)
+    void TextBox::SetHiliteTextBackgroundOpacity(float opacity)
     {
-        m_hiliteTextLabel->solidColorOpaque = opaque;
+        m_hiliteTextLabel->backgroundOpacity = opacity;
     }
 
     void TextBox::SetTextFormat(ComPtrParam<IDWriteTextFormat> format)
@@ -273,46 +293,127 @@ namespace d14engine::ui
         return { VisibleTextWidth(), VisibleTextHeight() };
     }
 
-    size_t TextBox::GetNearestCharacterGapIndex(float x)
+    void TextBox::OnTextChange()
     {
-        size_t characterGapIndex = 0;
-
-        float textAreaStartX = m_textLabel->Position().x;
-
-        float previousOffsetX = FLT_MAX;
-        float previousDistance = FLT_MAX;
-
-        size_t normalTextLen = m_textLabel->Text().size();
-        // Search the closest character gap iteratively.
-        for (size_t i = 0; i <= normalTextLen; ++i)
+        if (f_onTextChangeOverride)
         {
-            // Query text length with specified character count.
-            auto metrics = m_textLabel->GetTextLayoutMetrics(std::nullopt, 0, (UINT32)i);
-            // Don't use width here. The trailing whitespace should also be taken into account.
-            float currentOffsetX = textAreaStartX + metrics.widthIncludingTrailingWhitespace;
-
-            float currentDistance = std::abs(currentOffsetX - x);
-
-            // Current distance is larger than previous means the gap is moving away from the ibeam,
-            // which also means that the previous gap is exactly the closest one to the ibeam,
-            // so we simply terminate the search and select the previous gap as the final result.
-            if (currentDistance >= previousDistance)
-            {
-                characterGapIndex = i - 1;
-                break;
-            }
-            else // Not the closest gap, so continue searching.
-            {
-                characterGapIndex = i;
-            }
-            previousOffsetX = currentOffsetX;
-            previousDistance = currentDistance;
+            f_onTextChangeOverride(this);
         }
-        return characterGapIndex;
+        else
+        {
+            if (f_onTextChangeBefore) f_onTextChangeBefore(this);
+
+            OnTextChangeHelper();
+
+            if (f_onTextChangeAfter) f_onTextChangeAfter(this);
+        }
     }
 
-    void TextBox::OnRendererUpdateObject2D(Renderer* rndr)
+    void TextBox::OnTextChangeHelper()
     {
+        // TODO: add text box text changing logic.
+    }
+
+    void TextBox::TriggerNormalInput(KeyboardEvent& e)
+    {
+        auto chItor = UIResu::US_KEYBOARD_LAYOUT.find((int)e.vkey);
+        if (chItor != UIResu::US_KEYBOARD_LAYOUT.end())
+        {
+            bool useAlternative = (e.LSHIFT() || e.RSHIFT());
+            // Take Caps-Lock into consideration for the alphabetic characters.
+            if (chItor->first >= 0x41 && chItor->first <= 0x5A) // A ~ Z
+            {
+                // Use key-state with 0x0001 instead of async-key-state with 0x8000 to check state.
+                if (GetKeyState(VK_CAPITAL) & 0x0001) useAlternative = !useAlternative;
+            }
+            auto& character = useAlternative ? chItor->second.alternative : chItor->second.normal;
+
+            if (m_hiliteTextRange.count > 0)
+            {
+                m_textLabel->EraseTextFragment(m_hiliteTextRange);
+                m_textLabel->InsertTextFragment({ &character, 1 }, m_hiliteTextRange.offset);
+
+                SetIndicatorPosition(m_hiliteTextRange.offset + 1);
+                SetHiliteTextRange({ 0, 0 });
+
+                OnTextChange();
+            }
+            else // Insert single character.
+            {
+                m_textLabel->InsertTextFragment({ &character, 1 }, m_indicatorOffsetCount);
+
+                SetIndicatorPosition(m_indicatorOffsetCount + 1);
+
+                OnTextChange();
+            }
+        }
+    }
+
+    void TextBox::TriggerControlCommands(KeyboardEvent& e)
+    {
+        switch (e.vkey)
+        {
+        case 'A': // Select All
+        {
+            SetIndicatorPosition(m_textLabel->Text().size());
+            SetHiliteTextRange({ 0, m_textLabel->Text().size() });
+            break;
+        }
+        case 'C': PerformCopyCommand(); break;
+        case 'X': PerformCutCommand(); break;
+        case 'V': PerformPasteCommand(); break;
+        default: break;
+        }
+    }
+
+    void TextBox::PerformCopyCommand()
+    {
+        UIResu::SetClipboardText(m_hiliteTextLabel->Text());
+    }
+
+    void TextBox::PerformCutCommand()
+    {
+        UIResu::SetClipboardText(m_hiliteTextLabel->Text());
+
+        m_textLabel->EraseTextFragment(m_hiliteTextRange);
+
+        SetIndicatorPosition(m_hiliteTextRange.offset);
+        SetHiliteTextRange({ 0, 0 });
+
+        OnTextChange();
+    }
+
+    void TextBox::PerformPasteCommand()
+    {
+        auto content = UIResu::GetClipboardText();
+
+        if (content.has_value())
+        {
+            if (m_hiliteTextRange.count > 0)
+            {
+                m_textLabel->EraseTextFragment(m_hiliteTextRange);
+                m_textLabel->InsertTextFragment(content.value(), m_hiliteTextRange.offset);
+
+                SetIndicatorPosition(m_hiliteTextRange.offset + content.value().size());
+                SetHiliteTextRange({ 0, 0 });
+
+                OnTextChange();
+            }
+            else // Insert from indicator position.
+            {
+                m_textLabel->InsertTextFragment(content.value(), m_indicatorOffsetCount);
+
+                SetIndicatorPosition(m_indicatorOffsetCount + content.value().size());
+
+                OnTextChange();
+            }
+        }
+    }
+
+    void TextBox::OnRendererUpdateObject2DHelper(Renderer* rndr)
+    {
+        Panel::OnRendererUpdateObject2DHelper(rndr);
+
         auto deltaSecs = (float)rndr->timer->deltaSecs;
         
         // Blink vertical indicator.
@@ -323,35 +424,42 @@ namespace d14engine::ui
         }
     }
 
-    void TextBox::OnRendererDrawD2D1Layer(Renderer* rndr)
+    void TextBox::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
     {
-        Panel::DrawChildrenLayers(rndr);
+        Panel::OnRendererDrawD2D1LayerHelper(rndr);
 
         auto visibleTextAreaLeftTop = VisibleTextAbsolutePosition();
-        // Children on Mask
+        // Text on Mask. Note other children are hidden by default.
         BeginDrawOnMask(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-visibleTextAreaLeftTop.x, -visibleTextAreaLeftTop.y));
         {
-            Panel::DrawChildrenObjects(rndr);
+            if (m_textLabel->IsD2D1ObjectVisible())
+            {
+                m_textLabel->OnRendererDrawD2D1Object(rndr);
+            }
+            if (m_hiliteTextLabel->IsD2D1ObjectVisible())
+            {
+                m_hiliteTextLabel->OnRendererDrawD2D1Object(rndr);
+            }
         }
         EndDrawOnMask(rndr->d2d1DeviceContext.Get());
     }
 
-    void TextBox::OnRendererDrawD2D1Object(Renderer* rndr)
+    void TextBox::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         // Background
-        UIResu::SOLID_COLOR_BRUSH->SetColor(solidColor);
-        UIResu::SOLID_COLOR_BRUSH->SetOpacity(solidColorOpaque);
+        UIResu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
+        UIResu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
 
         Panel::DrawBackground(rndr);
 
         // Text
-        PostMaskToScene(rndr->d2d1DeviceContext.Get(), VisibleTextAbsoluteRect());
+        rndr->d2d1DeviceContext->DrawBitmap(maskBitmap.Get(), VisibleTextAbsoluteRect());
 
         // Indicator
         if (m_showIndicator && m_isIndicatorVisible)
         {
-            UIResu::SOLID_COLOR_BRUSH->SetColor((D2D1::ColorF)D2D1::ColorF::Black);
-            UIResu::SOLID_COLOR_BRUSH->SetOpacity(1.0f);
+            UIResu::SOLID_COLOR_BRUSH->SetColor(indicatorColor);
+            UIResu::SOLID_COLOR_BRUSH->SetOpacity(indicatorOpacity);
 
             D2D1_POINT_2F up = { m_indicatorPositionX, indicatorExternalY };
             D2D1_POINT_2F down = { m_indicatorPositionX, Height() - indicatorExternalY };
@@ -365,15 +473,63 @@ namespace d14engine::ui
     {
         Panel::OnSizeHelper(e);
 
-        m_visibleTextRect.right = e.size.width - roundRadiusX;
+        // Although m_visibleTextRect.left is always 0, e.size.width might be less than roundRadiusX,
+        // which will cause m_visibleTextRect.right less than m_visibleTextRect.left, and thus
+        // VisibleTextWidth() returns a negative value and finally overflows after type-casting.
+        m_visibleTextRect.right = std::max(e.size.width - roundRadiusX, m_visibleTextRect.left);
         m_visibleTextRect.bottom = e.size.height;
+
+        // Since Direct2D will render all primitives by subpixel, so do rounding to get better result.
+        LoadMaskBitmap((UINT)(VisibleTextWidth() + 0.5f), (UINT)(VisibleTextHeight() + 0.5f));
+    }
+
+    void TextBox::OnChangeThemeHelper(WstrViewParam themeName)
+    {
+        Panel::OnChangeThemeHelper(themeName);
+
+        if (themeName == L"Light")
+        {
+            backgroundColor = (D2D1::ColorF)D2D1::ColorF::White;
+            backgroundOpacity = 1.0f;
+
+            indicatorColor = (D2D1::ColorF)D2D1::ColorF::Black;
+            indicatorOpacity = 1.0f;
+
+            SetTextForegroundColor((D2D1::ColorF)D2D1::ColorF::Black);
+            SetTextForegroundOpacity(1.0f);
+            SetTextBackgroundColor((D2D1::ColorF)D2D1::ColorF::White);
+            SetTextBackgroundOpacity(0.0f);
+
+            SetHiliteTextForegroundColor((D2D1::ColorF)D2D1::ColorF::Black);
+            SetHiliteTextForegroundOpacity(1.0f);
+            SetHiliteTextBackgroundColor({ 0.68f, 0.84f, 1.0f, 1.0f });
+            SetHiliteTextBackgroundOpacity(1.0f);
+        }
+        else if (themeName == L"Dark")
+        {
+            backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
+            backgroundOpacity = 1.0f;
+
+            indicatorColor = (D2D1::ColorF)D2D1::ColorF::White;
+            indicatorOpacity = 1.0f;
+
+            SetTextForegroundColor({ 0.9f, 0.9f, 0.9f, 1.0f });
+            SetTextForegroundOpacity(1.0f);
+            SetTextBackgroundColor((D2D1::ColorF)D2D1::ColorF::Black);
+            SetTextBackgroundOpacity(0.0f);
+
+            SetHiliteTextForegroundColor({ 0.9f, 0.9f, 0.9f, 1.0f });
+            SetHiliteTextForegroundOpacity(1.0f);
+            SetHiliteTextBackgroundColor({ 0.15f, 0.31f, 0.47f, 1.0f });
+            SetHiliteTextBackgroundOpacity(1.0f);
+        }
     }
 
     bool TextBox::OnGetFocusHelper()
     {
         m_showIndicator = true;
 
-        Application::IncreaseAnimateCount();
+        Application::APP->IncreaseAnimateCount();
 
         return Panel::OnGetFocusHelper();
     }
@@ -384,7 +540,7 @@ namespace d14engine::ui
         SetIndicatorPosition(0);
         SetHiliteTextRange({ 0, 0 });
 
-        Application::DecreaseAnimateCount();
+        Application::APP->DecreaseAnimateCount();
 
         return Panel::OnLoseFocusHelper();
     }
@@ -398,7 +554,10 @@ namespace d14engine::ui
             m_isIndicatorVisible = true;
             m_indicatorBlinkElapsedSecs = 0.0f;
 
-            m_initialCharacterGapIndex = GetNearestCharacterGapIndex(AbsoluteToSelfCoord(e.cursorPoint).x);
+            float textAreaStartX = m_textLabel->Position().x;
+            float hiliteRangeStartX = AbsoluteToSelfCoord(e.cursorPoint).x - textAreaStartX;
+
+            m_initialCharacterGapIndex = m_textLabel->GetNearestCharacterGapIndex(hiliteRangeStartX);
 
             SetIndicatorPosition(m_initialCharacterGapIndex);
             SetHiliteTextRange({ 0, 0 });
@@ -414,23 +573,25 @@ namespace d14engine::ui
         if (IsHit(e.cursorPoint))
         {
             Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::Ibeam);
+        }
+        if (e.buttonState.leftPressed && Application::APP->IsUIObjectFocused(weak_from_this()))
+        {
+            // Force to show the indicator when it has been relocated.
+            // In general, this will provide a better user experience.
+            m_isIndicatorVisible = true;
+            m_indicatorBlinkElapsedSecs = 0.0f;
 
-            if (e.buttonState.leftPressed)
+            float textAreaStartX = m_textLabel->Position().x;
+            float hiliteRangeEndX = AbsoluteToSelfCoord(e.cursorPoint).x - textAreaStartX;
+
+            size_t currCharacterGapIndex = m_textLabel->GetNearestCharacterGapIndex(hiliteRangeEndX);
+
+            SetIndicatorPosition(currCharacterGapIndex);
+            SetHiliteTextRange(
             {
-                // Force to show the indicator when it has been relocated.
-                // In general, this will provide a better user experience.
-                m_isIndicatorVisible = true;
-                m_indicatorBlinkElapsedSecs = 0.0f;
-
-                size_t currCharacterGapIndex = GetNearestCharacterGapIndex(AbsoluteToSelfCoord(e.cursorPoint).x);
-
-                SetIndicatorPosition(currCharacterGapIndex);
-                SetHiliteTextRange(
-                {
-                    std::min(currCharacterGapIndex, m_initialCharacterGapIndex),
-                    (size_t)std::abs((int)currCharacterGapIndex - (int)m_initialCharacterGapIndex)
-                });
-            }
+                std::min(currCharacterGapIndex, m_initialCharacterGapIndex),
+                (size_t)std::abs((int)currCharacterGapIndex - (int)m_initialCharacterGapIndex)
+            });
         }
         return Panel::OnMouseMoveHelper(e);
     }
@@ -451,7 +612,7 @@ namespace d14engine::ui
                 }
                 case VK_LEFT:
                 {
-                    // In case the indicator offset count underflows.
+                    // Cast to signed integer in case the indicator offset count underflows.
                     SetIndicatorPosition((size_t)std::max((int)m_indicatorOffsetCount - 1, 0));
                     SetHiliteTextRange({ 0, 0 });
                     break;
@@ -470,34 +631,42 @@ namespace d14engine::ui
                 }
                 case VK_BACK:
                 {
-                    if (m_indicatorOffsetCount > 0)
+                    if (m_hiliteTextRange.count > 0) // Remove hilite text range.
                     {
-                        SetIndicatorPosition(m_indicatorOffsetCount - 1);
+                        m_textLabel->EraseTextFragment(m_hiliteTextRange);
+
+                        SetIndicatorPosition(m_hiliteTextRange.offset);
                         SetHiliteTextRange({ 0, 0 });
 
-                        auto& originText = m_textLabel->Text();
-                        Wstring headText(originText.begin(), originText.begin() + m_indicatorOffsetCount);
-                        Wstring tailText(originText.begin() + m_indicatorOffsetCount + 1, originText.end());
+                        OnTextChange();
+                    }
+                    else if (m_indicatorOffsetCount > 0) // Remove single character.
+                    {
+                        m_textLabel->EraseTextFragment({ m_indicatorOffsetCount - 1, 1 });
 
-                        m_textLabel->SetText(headText + tailText);
+                        SetIndicatorPosition(m_indicatorOffsetCount - 1);
+
+                        OnTextChange();
                     }
                     break;
                 }
                 case VK_DELETE:
                 {
-                    SetHiliteTextRange({ 0, 0 });
-
-                    auto& originText = m_textLabel->Text();
-                    Wstring headText(originText.begin(), originText.begin() + m_indicatorOffsetCount);
-
-                    if (m_indicatorOffsetCount < originText.size())
+                    if (m_hiliteTextRange.count > 0) // Remove hilite text range.
                     {
-                        Wstring tailText(originText.begin() + m_indicatorOffsetCount + 1, originText.end());
-                        m_textLabel->SetText(headText + tailText);
+                        m_textLabel->EraseTextFragment(m_hiliteTextRange);
+
+                        SetIndicatorPosition(m_hiliteTextRange.offset);
+                        SetHiliteTextRange({ 0, 0 });
+
+                        OnTextChange();
                     }
-                    else // Already at the right most end.
+                    else if (m_indicatorOffsetCount >= 0 && // Remove single character.
+                             m_textLabel->Text().size() > 0)
                     {
-                        m_textLabel->SetText(headText);
+                        m_textLabel->EraseTextFragment({ m_indicatorOffsetCount, 1 });
+
+                        OnTextChange();
                     }
                     break;
                 }
@@ -509,8 +678,17 @@ namespace d14engine::ui
                     return Panel::OnKeyboardHelper(e);
                 }
                 default:
+                {
+                    if (e.LCTRL() || e.RCTRL())
+                    {
+                        TriggerControlCommands(e);
+                    }
+                    else // Handle printable characters.
+                    {
+                        TriggerNormalInput(e);
+                    }
                     break;
-                }
+                }}
                 m_isIndicatorVisible = true;
                 m_indicatorBlinkElapsedSecs = 0.0f;
             }

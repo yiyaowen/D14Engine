@@ -2,6 +2,7 @@
 
 #include "UI/Button.h"
 
+#include "Renderer/MathUtils.h"
 #include "UI/Application.h"
 
 namespace d14engine::ui
@@ -15,6 +16,8 @@ namespace d14engine::ui
         Panel(rect, UIResu::SOLID_COLOR_BRUSH),
         iconRect(SelfCoordRect())
     {
+        m_takeOverChildrenDrawing = true;
+
         roundRadiusX = roundRadiusY = roundRadius;
 
         // Create text label. Only icon is displayed when text is empty.
@@ -28,68 +31,34 @@ namespace d14engine::ui
                 p->Resize(e.size.width, e.size.height);
             };
         }
-        appearances[(size_t)State::Idle] =
-        {
-            (D2D1::ColorF)D2D1::ColorF::Gray, // solid color
-            0.0f, // solid color opaque
-            icon, // bitmap
-            1.0f, // bitmap opaque
-            (D2D1::ColorF)D2D1::ColorF::Black, // text color
-            1.0f, // text color opaque
-            (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-            0.0f, // stroke color opaque
-            0.0f // stroke width
-        };
-        appearances[(size_t)State::Hover] =
-        {
-            (D2D1::ColorF)D2D1::ColorF::Gray, // solid color
-            0.1f, // solid color opaque
-            icon, // bitmap
-            1.0f, // bitmap opaque
-            (D2D1::ColorF)D2D1::ColorF::Black, // text color
-            1.0f, // text color opaque
-            (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-            0.0f, // stroke color opaque
-            0.0f // stroke width
-        };
-        appearances[(size_t)State::Down] =
-        {
-            (D2D1::ColorF)D2D1::ColorF::Gray, // solid color
-            0.1f, // solid color opaque
-            icon, // bitmap
-            0.5f, // bitmap opaque
-            (D2D1::ColorF)D2D1::ColorF::Black, // text color
-            0.5f, // text color opaque
-            (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-            0.0f, // stroke color opaque
-            0.0f // stroke width
-        };
     }
 
     void Button::OnInitializeFinish()
     {
-        textLabel->SetParent(shared_from_this());
+        Panel::OnInitializeFinish();
 
-        // Place appearance updating here instead of the end of ctor
-        // so that the derived class could be updated automatically.
+        // Note OnChangeThemeHelper has been called in OnInitializeFinish,
+        // so we need to update the appearance settings immediately here.
         UpdateAppearanceSetting(State::Idle);
+
+        textLabel->SetParent(shared_from_this());
     }
 
     void Button::UpdateAppearanceSetting(State state)
     {
         auto& setting = appearances[(size_t)state];
 
-        solidColor = setting.solidColor;
-        solidColorOpaque = setting.solidColorOpaque;
+        backgroundColor = setting.backgroundColor;
+        backgroundOpacity = setting.backgroundOpacity;
 
         bitmap = setting.bitmap;
-        bitmapOpaque = setting.bitmapOpaque;
+        bitmapOpacity = setting.bitmapOpacity;
 
-        textLabel->textColor = setting.textColor;
-        textLabel->textColorOpaque = setting.textColorOpaque;
+        textLabel->foregroundColor = setting.foregroundColor;
+        textLabel->foregroundOpacity = setting.foregroundOpacity;
 
         strokeColor = setting.strokeColor;
-        strokeColorOpaque = setting.strokeColorOpaque;
+        strokeOpacity = setting.strokeOpacity;
         strokeWidth = setting.strokeWidth;
     }
 
@@ -109,11 +78,6 @@ namespace d14engine::ui
         }
     }
 
-    void Button::OnPressHelper(Event& e)
-    {
-        UpdateAppearanceSetting(State::Down);
-    }
-
     void Button::OnRelease(Event& e)
     {
         if (f_onReleaseOverride)
@@ -130,16 +94,21 @@ namespace d14engine::ui
         }
     }
 
-    void Button::OnReleaseHelper(Event& e)
+    void Button::OnPressHelper(Event& e)
     {
-        UpdateAppearanceSetting(State::Hover);
+        if (e.Left()) UpdateAppearanceSetting(State::Down);
     }
 
-    void Button::OnRendererDrawD2D1Object(Renderer* rndr)
+    void Button::OnReleaseHelper(Event& e)
+    {
+        if (e.Left()) UpdateAppearanceSetting(State::Hover);
+    }
+
+    void Button::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         // Background
-        UIResu::SOLID_COLOR_BRUSH->SetColor(solidColor);
-        UIResu::SOLID_COLOR_BRUSH->SetOpacity(solidColorOpaque);
+        UIResu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
+        UIResu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
 
         if (brush != nullptr)
         {
@@ -148,7 +117,7 @@ namespace d14engine::ui
         }
         if (bitmap != nullptr)
         {
-            rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), SelfCoordToAbsolute(iconRect), bitmapOpaque);
+            rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), SelfCoordToAbsolute(iconRect), bitmapOpacity);
         }
 
         // Text
@@ -159,15 +128,104 @@ namespace d14engine::ui
 
         // Outline
         UIResu::SOLID_COLOR_BRUSH->SetColor(strokeColor);
-        UIResu::SOLID_COLOR_BRUSH->SetOpacity(strokeColorOpaque);
+        UIResu::SOLID_COLOR_BRUSH->SetOpacity(strokeOpacity);
+
+        auto innerRect = Mathu::Stretch(m_absoluteRect, { -strokeWidth * 0.5f, -strokeWidth * 0.5f });
 
         rndr->d2d1DeviceContext->DrawRoundedRectangle(
-            { m_absoluteRect, roundRadiusX, roundRadiusY }, UIResu::SOLID_COLOR_BRUSH.Get(), strokeWidth);
+            { innerRect, roundRadiusX, roundRadiusY }, UIResu::SOLID_COLOR_BRUSH.Get(), strokeWidth);
     }
 
     void Button::OnSizeHelper(SizeEvent& e)
     {
+        Panel::OnSizeHelper(e);
+
         textLabel->OnParentSize(e);
+    }
+
+    void Button::OnChangeThemeHelper(WstrViewParam themeName)
+    {
+        Panel::OnChangeThemeHelper(themeName);
+
+        if (themeName == L"Light")
+        {
+            appearances[(size_t)State::Idle] =
+            {
+                (D2D1::ColorF)D2D1::ColorF::Gray, // background color
+                0.0f, // background opacity
+                appearances[(size_t)State::Idle].bitmap, // bitmap
+                1.0f, // bitmap opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                1.0f, // foreground opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+                0.0f, // stroke opacity
+                0.0f // stroke width
+            };
+            appearances[(size_t)State::Hover] =
+            {
+                (D2D1::ColorF)D2D1::ColorF::Gray, // background color
+                0.1f, // background opacity
+                appearances[(size_t)State::Hover].bitmap, // bitmap
+                1.0f, // bitmap opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                1.0f, // foreground opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+                0.0f, // stroke opacity
+                0.0f // stroke width
+            };
+            appearances[(size_t)State::Down] =
+            {
+                (D2D1::ColorF)D2D1::ColorF::Gray, // background color
+                0.1f, // background opacity
+                appearances[(size_t)State::Down].bitmap, // bitmap
+                0.5f, // bitmap opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                0.5f, // foreground opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+                0.0f, // stroke opacity
+                0.0f // stroke width
+            };
+        }
+        else if (themeName == L"Dark")
+        {
+            appearances[(size_t)State::Idle] =
+            {
+                (D2D1::ColorF)D2D1::ColorF::Gray, // background color
+                0.0f, // background opacity
+                appearances[(size_t)State::Idle].bitmap, // bitmap
+                1.0f, // bitmap opacity
+                { 0.9f, 0.9f, 0.9f, 1.0f }, // text color
+                1.0f, // foreground opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+                0.0f, // stroke opacity
+                0.0f // stroke width
+            };
+            appearances[(size_t)State::Hover] =
+            {
+                (D2D1::ColorF)D2D1::ColorF::Gray, // background color
+                0.1f, // background opacity
+                appearances[(size_t)State::Hover].bitmap, // bitmap
+                1.0f, // bitmap opacity
+                { 0.9f, 0.9f, 0.9f, 1.0f }, // text color
+                1.0f, // foreground opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+                0.0f, // stroke opacity
+                0.0f // stroke width
+            };
+            appearances[(size_t)State::Down] =
+            {
+                (D2D1::ColorF)D2D1::ColorF::Gray, // background color
+                0.1f, // background opacity
+                appearances[(size_t)State::Down].bitmap, // bitmap
+                0.5f, // bitmap opacity
+                { 0.9f, 0.9f, 0.9f, 1.0f }, // text color
+                0.5f, // foreground opacity
+                (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
+                0.0f, // stroke opacity
+                0.0f // stroke width
+            };
+        }
+        UpdateAppearanceSetting(State::Idle);
     }
 
     bool Button::OnMouseButtonHelper(MouseButtonEvent& e)

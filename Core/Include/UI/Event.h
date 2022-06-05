@@ -131,13 +131,13 @@ namespace d14engine::ui
 
         WPARAM vkey = VK_NONAME;
 
-        bool LALT() { return GetAsyncKeyState(VK_LMENU) & 0x80; }
-        bool RALT() { return GetAsyncKeyState(VK_RMENU) & 0x80; }
+        bool LALT() { return GetAsyncKeyState(VK_LMENU) & 0x8000; }
+        bool RALT() { return GetAsyncKeyState(VK_RMENU) & 0x8000; }
 
-        bool LCTRL() { return GetAsyncKeyState(VK_LCONTROL) & 0x80; }
-        bool RCTRL() { return GetAsyncKeyState(VK_RCONTROL) & 0x80; }
+        bool LCTRL() { return GetAsyncKeyState(VK_LCONTROL) & 0x8000; }
+        bool RCTRL() { return GetAsyncKeyState(VK_RCONTROL) & 0x8000; }
 
-        bool LSHIFT() { return GetAsyncKeyState(VK_LSHIFT) & 0x80; }
-        bool RSHIFT() { return GetAsyncKeyState(VK_RSHIFT) & 0x80; }
+        bool LSHIFT() { return GetAsyncKeyState(VK_LSHIFT) & 0x8000; }
+        bool RSHIFT() { return GetAsyncKeyState(VK_RSHIFT) & 0x8000; }
     };
 }

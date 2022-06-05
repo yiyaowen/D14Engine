@@ -52,7 +52,7 @@ namespace d14engine::renderer
 
             // We must resize the letterbox ahead of swap chain and buffers
             // since the resources creation depends on the scene size info.
-            letterbox->OnParentSize(dispMode.Width, dispMode.Height, window.width, window.height);
+            letterbox->OnParentSize(dispMode.Width, dispMode.Height, window.ClientWidth (), window.ClientHeight());
         }
 
         ResizeSwapChain();
@@ -251,7 +251,7 @@ namespace d14engine::renderer
     void Renderer::EnterFullscreenMode()
     {
         // Save the old window rect so we can restore it when exiting fullscreen mode.
-        GetWindowRect(window.ptr, &window.wnd);
+        GetWindowRect(window.ptr, &window.windowRect);
 
         window.style = GetWindowLong(window.ptr, GWL_STYLE);
         // Make the window borderless so that the client area can fill the screen.
@@ -305,10 +305,10 @@ namespace d14engine::renderer
         SetWindowPos(
             window.ptr,
             HWND_NOTOPMOST,
-            window.wnd.left,
-            window.wnd.top,
-            window.wnd.right - window.wnd.left,
-            window.wnd.bottom - window.wnd.top,
+            window.windowRect.left,
+            window.windowRect.top,
+            window.WindowWidth(),
+            window.WindowHeight(),
             SWP_FRAMECHANGED | SWP_NOACTIVATE);
 
         ShowWindow(window.ptr, SW_NORMAL);
@@ -431,11 +431,11 @@ namespace d14engine::renderer
 
     bool Renderer::QueryMsaaSupport(const UINT& sampleCount, UINT& qualityLevel)
     {
-        auto originMsaaFeature = deviceInfo.features.msaa;
+        auto originalMsaaFeature = deviceInfo.features.msaa;
 
         // The query result will overwrite the MSAA feature fields,
-        // so we need to resotre the origin values after query finished.
-        auto undoMsaaFeature = Finally([&] { deviceInfo.features.msaa = originMsaaFeature; });
+        // so we need to resotre the original values after query finished.
+        auto undoMsaaFeature = Finally([&] { deviceInfo.features.msaa = originalMsaaFeature; });
 
         commonInfo.enableMSAA = true;
         commonInfo.msaaSampleCount = sampleCount;
@@ -453,10 +453,10 @@ namespace d14engine::renderer
     {
         bool changeFailed = true;
 
-        auto originMsaaFeature = deviceInfo.features.msaa;
+        auto originalMsaaFeature = deviceInfo.features.msaa;
 
         // Make sure the renderer wouldn't be spoiled if changing MSAA settings failed.
-        auto undoMsaaFeature = Finally([&] { if (changeFailed) deviceInfo.features.msaa = originMsaaFeature; });
+        auto undoMsaaFeature = Finally([&] { if (changeFailed) deviceInfo.features.msaa = originalMsaaFeature; });
 
         try
         {
@@ -744,8 +744,8 @@ namespace d14engine::renderer
         // The resolution of the swap chain back buffers will match the resolution of the window.
         // We will also keep a separate buffer that is not part of the swap chain as intermidiate
         // render target, whose resolution will control the rendering resolution of actual scene.
-        desc.Width = window.width;
-        desc.Height = window.height;
+        desc.Width = window.ClientWidth();
+        desc.Height = window.ClientHeight();
 
         desc.Format = RENDER_TARGET_FORMAT;
         // DirectX 12 3D does NOT support creating MSAA swap chain.
@@ -861,7 +861,7 @@ namespace d14engine::renderer
 
     void Renderer::ResizeSwapChain()
     {
-        // Clear origin back buffers before resize.
+        // Clear original back buffers before resize.
         for (auto& buffer : backBuffers)
         {
             buffer.Reset();
@@ -872,11 +872,11 @@ namespace d14engine::renderer
 
         DXGI_SWAP_CHAIN_DESC desc = {};
         swapChain->GetDesc(&desc);
-        // Note desc.Flags must be compatible with origin swap chain!
+        // Note desc.Flags must be compatible with original swap chain!
         THROW_IF_FAILED(swapChain->ResizeBuffers(
             _countof(backBuffers),
-            window.width,
-            window.height,
+            window.ClientWidth(),
+            window.ClientHeight(),
             desc.BufferDesc.Format,
             desc.Flags));
     }

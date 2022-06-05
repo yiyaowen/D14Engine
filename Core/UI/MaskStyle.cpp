@@ -19,17 +19,17 @@ namespace d14engine::ui
 
     void MaskStyle::LoadMaskBitmap(UINT width, UINT height)
     {
-        Application::RENDERER->BeginExternalEvent();
+        Application::APP->MainRenderer()->BeginExternalEvent();
 
-        m_maskBitmap = Bitmapu::LoadBitmapFromMemory(
+        maskBitmap = Bitmapu::LoadBitmapFromMemory(
             width, height, nullptr, D2D1_BITMAP_OPTIONS_TARGET);
 
-        Application::RENDERER->EndExternalEvent();
+        Application::APP->MainRenderer()->EndExternalEvent();
     }
 
     void MaskStyle::BeginDrawOnMask(ID2D1DeviceContext* context, const D2D1_MATRIX_3X2_F& transform)
     {
-        context->SetTarget(m_maskBitmap.Get());
+        context->SetTarget(maskBitmap.Get());
 
         context->BeginDraw();
         context->SetTransform(transform);
@@ -40,10 +40,5 @@ namespace d14engine::ui
     void MaskStyle::EndDrawOnMask(ID2D1DeviceContext* context)
     {
         context->EndDraw();
-    }
-
-    void MaskStyle::PostMaskToScene(ID2D1DeviceContext* context, const D2D1_RECT_F& destinationRectangle)
-    {
-        context->DrawBitmap(m_maskBitmap.Get(), destinationRectangle);
     }
 }

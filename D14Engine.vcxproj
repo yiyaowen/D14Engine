@@ -129,6 +129,7 @@
     </Link>
     <Manifest>
       <AdditionalManifestFiles>./Common/DeclareDPIAware.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -166,7 +167,14 @@
     <ClCompile Include="Core\Renderer\Renderer.cpp" />
     <ClCompile Include="Core\Renderer\StaticSampler.cpp" />
     <ClCompile Include="Core\Renderer\Timer.cpp" />
+    <ClCompile Include="Core\UI\AnimationUtils.cpp" />
     <ClCompile Include="Core\UI\AnimTextBox.cpp" />
+    <ClCompile Include="Core\UI\ConstraintLayout.cpp" />
+    <ClCompile Include="Core\UI\GridLayout.cpp" />
+    <ClCompile Include="Core\UI\OnOffSwitch.cpp" />
+    <ClCompile Include="Core\UI\ResizablePanel.cpp" />
+    <ClCompile Include="Core\UI\ScrollView.cpp" />
+    <ClCompile Include="Core\UI\TabGroup.cpp" />
     <ClCompile Include="Core\UI\TextBox.cpp" />
     <ClCompile Include="Core\UI\StrokeStyle.cpp" />
     <ClCompile Include="Test\TestMain.cpp" />
@@ -203,8 +211,16 @@
     <ClInclude Include="Common\RuntimeError.h" />
     <ClInclude Include="Core\Include\Renderer\StaticSampler.h" />
     <ClInclude Include="Core\Include\Renderer\Timer.h" />
+    <ClInclude Include="Core\Include\UI\AnimationUtils.h" />
     <ClInclude Include="Core\Include\UI\AnimTextBox.h" />
+    <ClInclude Include="Core\Include\UI\ConstraintLayout.h" />
+    <ClInclude Include="Core\Include\UI\GridLayout.h" />
+    <ClInclude Include="Core\Include\UI\Layout.h" />
+    <ClInclude Include="Core\Include\UI\OnOffSwitch.h" />
+    <ClInclude Include="Core\Include\UI\ResizablePanel.h" />
+    <ClInclude Include="Core\Include\UI\ScrollView.h" />
     <ClInclude Include="Core\Include\UI\StrokeStyle.h" />
+    <ClInclude Include="Core\Include\UI\TabGroup.h" />
     <ClInclude Include="Core\Include\UI\TextBox.h" />
     <ClInclude Include="ThirdParty\DirectX\d3dx12.h" />
     <ClInclude Include="Core\Include\UI\Application.h" />

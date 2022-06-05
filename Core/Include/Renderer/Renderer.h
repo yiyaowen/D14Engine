@@ -101,34 +101,37 @@ namespace d14engine::renderer
         void RemoveDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d);
         bool FindDrawObject2D(ShrdPtrParam<IDrawObject2D> obj2d);
 
-        // This field will be assigned as the origin create info passed in ctor.
+        // This field will be assigned as the original create info passed in ctor.
         // The program shares these config fields during the renderer's lifecycle,
         // so the values of some fields might be changed dynamically at runtime.
         CreateInfo commonInfo;
 
         struct Window
         {
-            HWND ptr;
+            HWND ptr = nullptr;
 
-            UINT style;
+            UINT style = 0;
 
             // Indicate whether the swap chain is already in fullscreen mode;
             // unnecessary transition between fullscreen and windowed modes can be avoided;
             // for example, isFullscreen is true and the user try to enter fullscreen mode.
             bool isFullscreen = false;
 
-            RECT wnd, clnt;
-            // Client size, NOT window size!
-            UINT width, height;
+            RECT windowRect = { 0, 0, 0, 0 };
+            RECT clientRect = { 0, 0, 0, 0 };
+
+            UINT WindowWidth() { return windowRect.right - windowRect.left; }
+            UINT WindowHeight() { return windowRect.bottom - windowRect.top; }
+
+            UINT ClientWidth() { return clientRect.right - clientRect.left; }
+            UINT ClientHeight() { return clientRect.bottom - clientRect.top; }
         }
         window = {};
 
         void UpdateWindowSizeInfo()
         {
-            // Don't use GetWindowRect!
-            GetClientRect(window.ptr, &window.clnt);
-            window.width = window.clnt.right - window.clnt.left;
-            window.height = window.clnt.bottom - window.clnt.top;
+            GetWindowRect(window.ptr, &window.windowRect);
+            GetClientRect(window.ptr, &window.clientRect);
         }
 
         void EnterFullscreenMode();
@@ -236,7 +239,7 @@ namespace d14engine::renderer
 
         // Check whether all user customized configs are valid.
         // 
-        // The user may define its own requirements in origin create info,
+        // The user may define its own requirements in original create info,
         // so we must compare them with supported device features
         // to decide whether the renderer can be initialized successfully.
         //
@@ -417,8 +420,8 @@ namespace d14engine::renderer
         // i.e. in fullscreen mode or when forceResolution is set.
         UniquePtr<Letterbox> letterbox = nullptr;
 
-        UINT SceneWidth() { return (letterbox == nullptr) ? window.width : letterbox->SceneWidth(); }
-        UINT SceneHeight() { return (letterbox == nullptr) ? window.height : letterbox->SceneHeight(); }
+        UINT SceneWidth() { return (letterbox == nullptr) ? window.ClientWidth() : letterbox->SceneWidth(); }
+        UINT SceneHeight() { return (letterbox == nullptr) ? window.ClientHeight() : letterbox->SceneHeight(); }
 
         void CopySceneToBackBuffer();
 

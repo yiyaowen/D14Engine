@@ -10,24 +10,23 @@ namespace d14engine::ui
 {
     struct Label : Panel, SolidStyle
     {
-#define FORMAT_DEFAULT_VALUE UIResu::TEXT_FORMATS.at(L"微软雅黑/Normal/16")
+#define FORMAT_DEFAULT_VALUE UIResu::TEXT_FORMATS.at(L"微软雅黑/Light/16")
 
         Label(
             WstrParam text,
             D2D_RECT_F rect,
+            ComPtrParam<IDWriteTextFormat> format = FORMAT_DEFAULT_VALUE,
             D2D1_COLOR_F foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black,
-            float foregroundColorOpaque = 1.0f,
+            float foregroundOpacity = 1.0f,
             D2D1_COLOR_F backgroundColor = (D2D1::ColorF)D2D1::ColorF::White,
-            float backgroundColorOpaque = 0.0f,
-            ComPtrParam<IDWriteTextFormat> format = FORMAT_DEFAULT_VALUE);
+            float backgroundOpacity = 0.0f);
 
 #undef FORMAT_DEFAULT_VALUE
 
-        D2D1_COLOR_F textColor;
-
-        float textColorOpaque;
-
         ComPtr<IDWriteTextFormat> format;
+
+        D2D1_COLOR_F foregroundColor;
+        float foregroundOpacity;
 
         struct Alignment
         {
@@ -36,7 +35,7 @@ namespace d14engine::ui
         }
         alignment;
 
-        D2D1_DRAW_TEXT_OPTIONS options = D2D1_DRAW_TEXT_OPTIONS_NONE;
+        D2D1_DRAW_TEXT_OPTIONS options = D2D1_DRAW_TEXT_OPTIONS_CLIP;
 
         DWRITE_MEASURING_MODE measuringMode = DWRITE_MEASURING_MODE_NATURAL;
 
@@ -65,13 +64,19 @@ namespace d14engine::ui
             OptParam<WstringView> text = std::nullopt,
             UINT32 characterOffset = 0,
             UINT32 characterCount = UINT32_MAX,
-            OptParam<float> minWidth = std::nullopt,
-            OptParam<float> minHeight = std::nullopt);
+            OptParam<float> maxWidth = std::nullopt,
+            OptParam<float> maxHeight = std::nullopt);
+
+        // TODO: add support for searching multiline text's nearest character gap index.
+        size_t GetNearestCharacterGapIndex(float selfCoordOffsetX);
 
     public:
         // Override interface methods.
 
         // IDrawObject2D
-        void OnRendererDrawD2D1Object(Renderer* rndr) override;
+        void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
+
+        // Panel
+        void OnChangeThemeHelper(WstrViewParam themeName) override;
     };
 }

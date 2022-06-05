@@ -102,6 +102,27 @@
     <ClCompile Include="Core\UI\AnimTextBox.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Core\UI\GridLayout.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\ResizablePanel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\ConstraintLayout.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\ScrollView.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\OnOffSwitch.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\AnimationUtils.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\UI\TabGroup.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\Precompile.h">
@@ -210,6 +231,30 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Core\Include\UI\AnimTextBox.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\GridLayout.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\ResizablePanel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\ConstraintLayout.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\Layout.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\ScrollView.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\OnOffSwitch.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\AnimationUtils.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\TabGroup.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

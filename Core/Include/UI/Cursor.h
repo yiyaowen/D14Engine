@@ -12,7 +12,7 @@ namespace d14engine::ui
         {
             Arrow,
             Hand,
-            Move,
+            AllSize,
             Ibeam,
             HorzSize,
             VertSize,
@@ -31,7 +31,9 @@ namespace d14engine::ui
 
         static IconMap LoadBasicIconSeries();
 
-        Cursor(const IconMap& icons = {}, const D2D1_RECT_F& rect = { 0.0f, 0.0f, 32.0f, 32.0f });
+        Cursor(
+            const IconMap& icons = {},
+            const D2D1_RECT_F& rect = { 0.0f, 0.0f, 32.0f, 32.0f });
 
         void RegisterIcon(IconIndex index, const Icon& icon);
         void RegisterIcon(WstrParam name, const Icon& icon);
@@ -54,6 +56,6 @@ namespace d14engine::ui
         // Override interface methods.
 
         // IDrawObject2D
-        void OnRendererDrawD2D1Object(Renderer* rndr) override;
+        void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
     };
 }

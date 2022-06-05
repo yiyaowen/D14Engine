@@ -7,9 +7,12 @@
 
 namespace d14engine::ui
 {
-    struct TextBox : Panel, MaskStyle, SolidStyle
+    struct TextBox : Panel, protected MaskStyle, SolidStyle
     {
         TextBox(const D2D1_RECT_F& rect, float roundRadius = 0.0f);
+
+        D2D1_COLOR_F indicatorColor = (D2D1::ColorF)D2D1::ColorF::Black;
+        float indicatorOpacity = 1.0f;
 
         // The vertical distance between the panel's top/bottom and the indicator's top/bottom.
         float indicatorExternalY = 5.0f;
@@ -17,6 +20,7 @@ namespace d14engine::ui
 
         void OnInitializeFinish() override;
 
+    public:
         const Wstring& Text();
         void SetText(WstrViewParam text);
         void SetText(Wstring&& text);
@@ -29,10 +33,10 @@ namespace d14engine::ui
         void ModifyTextFragment(WstrViewParam fragment, const CharacterRange& range);
 
         void SetTextForegroundColor(const D2D1_COLOR_F& color);
-        void SetTextForegroundColorOpaque(float opaque);
+        void SetTextForegroundOpacity(float opacity);
 
         void SetTextBackgroundColor(const D2D1_COLOR_F& color);
-        void SetTextBackgroundColorOpaque(float opaque);
+        void SetTextBackgroundOpacity(float opacity);
 
         const Wstring& HiliteText();
         void SetHiliteText(WstrViewParam text);
@@ -42,10 +46,10 @@ namespace d14engine::ui
         void SetHiliteTextRange(const CharacterRange& range);
 
         void SetHiliteTextForegroundColor(const D2D1_COLOR_F& color);
-        void SetHiliteTextForegroundColorOpaque(float opaque);
+        void SetHiliteTextForegroundOpacity(float opacity);
 
         void SetHiliteTextBackgroundColor(const D2D1_COLOR_F& color);
-        void SetHiliteTextBackgroundColorOpaque(float opaque);
+        void SetHiliteTextBackgroundOpacity(float opacity);
 
         void SetTextFormat(ComPtrParam<IDWriteTextFormat> format);
 
@@ -87,22 +91,40 @@ namespace d14engine::ui
         // Indicator's relative horizontal position.
         float m_indicatorPositionX = 0.0f;
 
-        size_t GetNearestCharacterGapIndex(float x);
-
+        // Hilite range's start index when trigger mouse-move event.
         size_t m_initialCharacterGapIndex = 0;
+
+    public:
+        void OnTextChange();
+        virtual void OnTextChangeHelper();
+
+        Function<void(TextBox*)>
+            f_onTextChangeOverride = {},
+            f_onTextChangeBefore = {},
+            f_onTextChangeAfter = {};
+
+    protected:
+        void TriggerNormalInput(KeyboardEvent& e);
+        void TriggerControlCommands(KeyboardEvent& e);
+
+        void PerformCopyCommand();
+        void PerformCutCommand();
+        void PerformPasteCommand();
 
     public:
         // Override interface methods.
 
         // IDrawObject2D
-        void OnRendererUpdateObject2D(Renderer* rndr) override;
+        void OnRendererUpdateObject2DHelper(Renderer* rndr) override;
 
-        void OnRendererDrawD2D1Layer(Renderer* rndr) override;
+        void OnRendererDrawD2D1LayerHelper(Renderer* rndr) override;
 
-        void OnRendererDrawD2D1Object(Renderer* rndr) override;
+        void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
 
         // Panel
         void OnSizeHelper(SizeEvent& e) override;
+
+        void OnChangeThemeHelper(WstrViewParam themeName) override;
 
         bool OnGetFocusHelper() override;
 

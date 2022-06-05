@@ -17,7 +17,7 @@ namespace d14engine::renderer
 
     void Timer::Start()
     {
-        mIsPause = false;
+        m_isPause = false;
         QueryPerformanceCounter((LARGE_INTEGER*)&baseTickCount);
         currTickCount = baseTickCount;
         // Reset all performance counts.
@@ -26,7 +26,7 @@ namespace d14engine::renderer
 
     void Timer::Tick()
     {
-        if (mIsPause) return; // Stike when stopped or paused.
+        if (m_isPause) return; // Stike when stopped or paused.
         QueryPerformanceCounter((LARGE_INTEGER*)&currTickCount);
         double currElapsedSecs = (currTickCount - baseTickCount) * secsPerTickCount;
         deltaSecs = currElapsedSecs - elapsedSecsSinceResume;
@@ -35,13 +35,18 @@ namespace d14engine::renderer
 
     void Timer::Stop()
     {
-        mIsPause = true;
+        m_isPause = true;
         elapsedSecsAtLastPause = ElapsedSecs();
         elapsedSecsSinceResume = deltaSecs = 0;
     }
 
     void Timer::Resume()
     {
-        mIsPause = false;
+        if (m_isPause)
+        {
+            m_isPause = false;
+            QueryPerformanceCounter((LARGE_INTEGER*)&baseTickCount);
+            currTickCount = baseTickCount;
+        }
     }
 }

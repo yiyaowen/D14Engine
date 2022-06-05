@@ -26,19 +26,6 @@ namespace d14engine::ui
 
         static Application* APP;
 
-        static Renderer* RENDERER;
-
-    private:
-        // This field indicates whether the renderer should be updated in the main while-loop.
-        // When the application keeps idle, there's no need to draw frames continuously;
-        // however, when there're objects that perform animation, i.e. ANIMATE_COUNT > 0,
-        // we have to draw frames in the main while-loop instead of waiting for paint-events.
-        static int ANIMATE_COUNT;
-
-    public:
-        static void IncreaseAnimateCount();
-        static void DecreaseAnimateCount();
-
         Application(int argc, wchar_t* argv[], const CreateInfo& info = {});
 
         int Run(const std::function<void(Application* app)>& onLaunch);
@@ -49,24 +36,29 @@ namespace d14engine::ui
         // In this case, we will never get a WM_QUIT from PeekMessage in the main loop.
         void Exit() { SendMessage(m_window, WM_DESTROY, 0, 0); }
 
+        HWND RootWindow() { return m_window; }
+        Renderer* MainRenderer() { return m_renderer.get(); }
+
+        void IncreaseAnimateCount();
+        void DecreaseAnimateCount();
+
         void AddUIObject(ShrdPtrParam<Panel> uiobj);
         void RemoveUIObject(ShrdPtrParam<Panel> uiobj);
 
         void PinUIObject(WeakPtrParam<Panel> uiobj);
         void UnpinUIObject(WeakPtrParam<Panel> uiobj);
 
-        // Return whether target UI object is found in the container.
+        // Return whether the target UI object exists in specified container.
         bool FindUIObject(ShrdPtrParam<Panel> uiobj);
         bool FindHitUIObject(WeakPtrParam<Panel> uiobj);
         bool FindPinnedUIObject(WeakPtrParam<Panel> uiobj);
         bool FindDiffPinnedUIObject(WeakPtrParam<Panel> uiobj);
 
-        // Return RawPtr directly since the main cursor must be valid
-        // during the whole lifecycle of the application.
+        // Return RawPtr directly since the main cursor won't be destroyed until the application exits.
         Cursor* MainCursor();
 
         WeakPtr<Panel> GetFocusedUIObject();
-        // A simple tool method that calls GetFocusedUIObject.
+        // A simple tool method that forwards GetFocusedUIObject.
         bool IsUIObjectFocused(WeakPtrParam<Panel> uiobj);
 
         // This method will change the focused immediately, which is dangerous
@@ -78,6 +70,8 @@ namespace d14engine::ui
         // Use FocusUIObjectLater instead to change the focused in the callbacks,
         // and the actual focus transition will be performed in the next event pass.
         void FocusUIObjectLater(WeakPtrParam<Panel> uiobj);
+
+        void ChangeTheme(WstrViewParam themeName);
 
     private:
         // This method will update the diff-pinned set immediately, which is dangerous
@@ -97,9 +91,15 @@ namespace d14engine::ui
 
         // The application only maintains one Win32 window during its lifecycle,
         // and the renderer will take over the display work of all UI objects.
-        // Thus all child windows are rendered within the main window,
+        // Thus all children (UI objects) are rendered within the main window,
         // where the main window actually becomes the "desktop" of the application.
         UniquePtr<Renderer> m_renderer;
+
+        // This field indicates whether the renderer should be updated in the main while-loop.
+        // When the application keeps idle, there's no need to draw frames continuously;
+        // however, when there're objects that perform animation, i.e. animate-count > 0,
+        // we have to draw frames in the main while-loop instead of waiting for paint-events.
+        int m_animateCount = 0;
 
         using UIObjectSet = std::unordered_set<SharedPtr<Panel>>;
 
@@ -109,7 +109,7 @@ namespace d14engine::ui
 
         UIObjectPrioritySet m_hitUIObjects;
         
-        // Pinned objects would still receive UI events even though they are not hit.
+        // Pinned objects keep receiving UI events even though they are not hit.
         UIObjectPrioritySet m_pinnedUIObjects, m_diffPinnedUIObjects;
 
         SharedPtr<Cursor> m_cursor;
@@ -129,7 +129,7 @@ namespace d14engine::ui
     private:
         WeakPtr<Panel> m_nextFocusedCandidate;
 
-        using NextDiffPinnedUpdatingCandidates = std::set <WeakPtr<Panel>, std::owner_less<WeakPtr<Panel>>>;
+        using NextDiffPinnedUpdatingCandidates = std::set<WeakPtr<Panel>, std::owner_less<WeakPtr<Panel>>>;
 
         NextDiffPinnedUpdatingCandidates m_nextDiffPinnedUpdatingCandidates;
 

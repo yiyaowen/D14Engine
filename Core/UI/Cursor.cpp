@@ -15,7 +15,7 @@ namespace d14engine::ui
         {
             PUSH_ICON_PATH(Arrow, { 0.0f, 0.0f }),
             PUSH_ICON_PATH(Hand, { -6.0f, 0.0f }),
-            PUSH_ICON_PATH(Move, { -16.0f, -16.0f }),
+            PUSH_ICON_PATH(AllSize, { -16.0f, -16.0f }),
             PUSH_ICON_PATH(Ibeam, { -16.0f, -16.0f }),
             PUSH_ICON_PATH(HorzSize, { -16.0f, -16.0f }),
             PUSH_ICON_PATH(VertSize, { -16.0f, -16.0f }),
@@ -32,7 +32,7 @@ namespace d14engine::ui
 
             icon.bitmap = Bitmapu::LoadBitmapFromFile(
                 std::get<1>(path),
-                Application::RENDERER->commonInfo.assetsPath + L"Images/Cursors/WinClassics/");
+                Application::APP->MainRenderer()->commonInfo.assetsPath + L"Images/Cursors/WinClassics/");
 
             icon.displayOffset = std::get<2>(path);
         }
@@ -76,7 +76,7 @@ namespace d14engine::ui
         m_displayOffset = icon.displayOffset;
     }
 
-    void Cursor::OnRendererDrawD2D1Object(Renderer* rndr)
+    void Cursor::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         if (bitmap != nullptr)
         {

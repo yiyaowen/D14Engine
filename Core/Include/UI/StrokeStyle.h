@@ -14,7 +14,6 @@ namespace d14engine::ui
         float strokeWidth;
 
         D2D1_COLOR_F strokeColor;
-
-        float strokeColorOpaque;
+        float strokeOpacity;
     };
 }
