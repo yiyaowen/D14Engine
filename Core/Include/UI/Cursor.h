@@ -23,8 +23,8 @@ namespace d14engine::ui
 
         struct Icon
         {
-            ComPtr<ID2D1Bitmap1> bitmap;
-            D2D1_POINT_2F displayOffset = { 0.0f, 0.0f };
+            ComPtr<ID2D1Bitmap1> bitmap = {};
+            D2D1_POINT_2F displayOffset = {};
         };
 
         using IconMap = std::unordered_map<IconIndex, Icon>;
@@ -44,11 +44,11 @@ namespace d14engine::ui
     protected:
         using IconArray = std::array<Icon, (size_t)IconIndex::Count>;
 
-        IconArray m_basicIcons;
+        IconArray m_basicIcons = {};
 
         using IconLibrary = std::unordered_map<Wstring, Icon>;
 
-        IconLibrary m_iconLibrary;
+        IconLibrary m_iconLibrary = {};
 
         D2D1_POINT_2F m_displayOffset = { 0.0f, 0.0f };
 

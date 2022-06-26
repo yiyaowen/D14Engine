@@ -15,7 +15,7 @@ namespace d14engine::ui
             D2D1_RECT_F resizeFrameOffset = { 6.0f, 6.0f, 6.0f, 6.0f });
 
         // This field decides the extension of IsHit area.
-        D2D1_RECT_F resizeFrameOffset;
+        D2D1_RECT_F resizeFrameOffset = {};
 
         D2D1_RECT_F ResizeFrameExtendedRect(const D2D1_RECT_F& flatRect);
 

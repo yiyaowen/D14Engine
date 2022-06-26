@@ -18,6 +18,12 @@ namespace d14engine::renderer
         static D2D1_RECT_F Offset(const D2D1_RECT_F& rect, const D2D1_POINT_2F& offset);
         static D2D1_POINT_2F Offset(const D2D1_POINT_2F& point, const D2D1_POINT_2F& offset);
 
+        static D2D1_POINT_2F OverrideX(const D2D1_POINT_2F& point, float value);
+        static D2D1_POINT_2F OverrideY(const D2D1_POINT_2F& point, float value);
+
+        static D2D1_POINT_2F IncreaseX(const D2D1_POINT_2F& point, float value);
+        static D2D1_POINT_2F IncreaseY(const D2D1_POINT_2F& point, float value);
+
         // Pass through positive delta to expand and negative delta to shrink the rectangle.
         static D2D1_RECT_F Stretch(const D2D1_RECT_F& rect, const D2D1_POINT_2F& delta);
 

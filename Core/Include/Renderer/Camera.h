@@ -2,10 +2,9 @@
 
 #include "Precompile.h"
 
-#include "ICamera.h"
-
 #include "FrameResource.h"
 #include "GpuBuffer.h"
+#include "ICamera.h"
 #include "MathUtils.h"
 
 namespace d14engine::renderer
@@ -13,6 +12,13 @@ namespace d14engine::renderer
     struct Camera : IMainCamera
     {
         // Implement interface methods.
+
+        // ICamera
+        void OnViewResize(UINT viewWidth, UINT viewHeight) override;
+
+        D3D12_VIEWPORT Viewport() override { return viewport; }
+
+        D3D12_RECT ScissorRect() override { return scissorRect; }
 
         // IDrawObject
         bool IsD3D12ObjectVisible() override;
@@ -22,13 +28,6 @@ namespace d14engine::renderer
         void OnRendererUpdateObject(Renderer* rndr) override;
 
         void OnRendererDrawD3D12Object(Renderer* rndr) override;
-
-        // ICamera
-        void OnViewResize(UINT viewWidth, UINT viewHeight) override;
-
-        D3D12_VIEWPORT Viewport() override { return viewport; }
-
-        D3D12_RECT ScissorRect() override { return scissorRect; }
 
         // Implement struct methods.
 
@@ -53,8 +52,8 @@ namespace d14engine::renderer
         // Distance to far plane of view frustum.
         float farZ = 1000.0f;
 
-        D3D12_VIEWPORT viewport;
-        D3D12_RECT scissorRect;
+        D3D12_VIEWPORT viewport = {};
+        D3D12_RECT scissorRect = {};
 
         XMFLOAT4X4 projTrans = Mathu::IdentityFloat4x4();
 
@@ -67,10 +66,10 @@ namespace d14engine::renderer
             // Mapped to projTrans.
             XMFLOAT4X4 projMatrix = Mathu::IdentityFloat4x4();
         }
-        data;
+        data = {};
 
         UINT rootParamIndex = 0;
-        SharedPtr<ConstantBuffer> buffer;
+        SharedPtr<ConstantBuffer> buffer = {};
 
         // Indicate whether the buffer need to update in this frame.
         // Set as full count to update the buffer automatically at initialization.

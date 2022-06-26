@@ -3,6 +3,8 @@
 #include "UI/ScrollView.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/UIResourceUtils.h"
 
 namespace d14engine::ui
@@ -370,7 +372,7 @@ namespace d14engine::ui
         return ResizablePanel::OnMouseMoveHelper(e);
     }
 
-    bool ScrollView::OnMouseLeaveHelper(MouseLeaveEvent& e)
+    bool ScrollView::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         m_isHorzBarHover = m_isHorzBarDown = m_isVertBarHover = m_isVertBarDown = false;
 

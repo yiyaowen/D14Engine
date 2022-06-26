@@ -23,26 +23,26 @@ namespace d14engine::ui
 
 #undef FORMAT_DEFAULT_VALUE
 
-        ComPtr<IDWriteTextFormat> format;
+        ComPtr<IDWriteTextFormat> format = {};
 
-        D2D1_COLOR_F foregroundColor;
-        float foregroundOpacity;
+        D2D1_COLOR_F foregroundColor = {};
+        float foregroundOpacity = {};
 
         struct Alignment
         {
             DWRITE_TEXT_ALIGNMENT horizontal = DWRITE_TEXT_ALIGNMENT_CENTER;
             DWRITE_PARAGRAPH_ALIGNMENT vertical = DWRITE_PARAGRAPH_ALIGNMENT_CENTER;
         }
-        alignment;
+        alignment = {};
 
         D2D1_DRAW_TEXT_OPTIONS options = D2D1_DRAW_TEXT_OPTIONS_CLIP;
 
         DWRITE_MEASURING_MODE measuringMode = DWRITE_MEASURING_MODE_NATURAL;
 
     private:
-        Wstring m_text;
+        Wstring m_text = {};
 
-        DWRITE_TEXT_METRICS m_textMetrics;
+        DWRITE_TEXT_METRICS m_textMetrics = {};
 
     public:
         const Wstring& Text();

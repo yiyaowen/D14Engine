@@ -2,12 +2,11 @@
 
 #include "Precompile.h"
 
+#include "FrameResource.h"
 #include "ICamera.h"
 #include "IDrawLayer.h"
 #include "IDrawObject.h"
 #include "IDrawObject2D.h"
-
-#include "FrameResource.h"
 #include "Letterbox.h"
 #include "Timer.h"
 
@@ -104,7 +103,7 @@ namespace d14engine::renderer
         // This field will be assigned as the original create info passed in ctor.
         // The program shares these config fields during the renderer's lifecycle,
         // so the values of some fields might be changed dynamically at runtime.
-        CreateInfo commonInfo;
+        CreateInfo commonInfo = {};
 
         struct Window
         {
@@ -146,9 +145,9 @@ namespace d14engine::renderer
         {
             struct Features
             {
-                bool allowTearing;
+                bool allowTearing = {};
             }
-            features;
+            features = {};
         }
         g_commonFactoryInfo;
 
@@ -162,11 +161,11 @@ namespace d14engine::renderer
 
         static AdapterArray g_availableAdapters;
 
-        UINT currAdapterIndex;
+        UINT currAdapterIndex = {};
 
         void SelectAdapter(UINT index);
 
-        ComPtr<ID3D12Device> device;
+        ComPtr<ID3D12Device> device = {};
 
         using DisplayModeArray = std::vector<DXGI_MODE_DESC>;
 
@@ -181,45 +180,45 @@ namespace d14engine::renderer
             {
                 struct DescHandleIncrementSize
                 {
-                    UINT64 RTV, DSV, CBV_SRV_UAV;
+                    UINT64 RTV = {}, DSV = {}, CBV_SRV_UAV = {};
                 }
-                descHandleIncrementSize;
+                descHandleIncrementSize = {};
 
-                DisplayModeArray availableDisplayModes;
+                DisplayModeArray availableDisplayModes = {};
             }
-            properties;
+            properties = {};
 
             struct Features
             {
                 struct MSAA
                 {
-                    bool support;
-                    UINT sampleCount;
-                    UINT qualityLevel;
+                    bool support = {};
+                    UINT sampleCount = {};
+                    UINT qualityLevel = {};
                 }
-                msaa;
+                msaa = {};
 
-                D3D12_FEATURE_DATA_ROOT_SIGNATURE rootSignature;
+                D3D12_FEATURE_DATA_ROOT_SIGNATURE rootSignature = {};
             }
-            features;
+            features = {};
 
             struct Settings
             {
                 struct MSAA
                 {
-                    bool enable;
-                    UINT sampleCount;
-                    UINT qualityLevel;
+                    bool enable = {};
+                    UINT sampleCount = {};
+                    UINT qualityLevel = {};
                 }
-                msaa;
+                msaa = {};
 
-                bool fullscreen;
-                bool forceResolution;
-                UINT currDisplayModeIndex;
+                bool fullscreen = {};
+                bool forceResolution = {};
+                UINT currDisplayModeIndex = {};
 
-                bool allowTearing;
+                bool allowTearing = {};
             }
-            settings;
+            settings = {};
         }
         deviceInfo = {};
 
@@ -251,33 +250,33 @@ namespace d14engine::renderer
         void CheckDisplayModeConfig();
         void CheckTearingConfig();
 
-        ComPtr<ID3D12Fence> fence;
+        ComPtr<ID3D12Fence> fence = {};
 
         UINT64 fenceValue = 0;
 
-        ComPtr<ID3D12CommandQueue> cmdQueue;
-        ComPtr<ID3D12CommandAllocator> cmdAlloc;
-        ComPtr<ID3D12GraphicsCommandList> cmdList;
+        ComPtr<ID3D12CommandQueue> cmdQueue = {};
+        ComPtr<ID3D12CommandAllocator> cmdAlloc = {};
+        ComPtr<ID3D12GraphicsCommandList> cmdList = {};
 
         void CreateCommandObjects();
 
         using FrameResourceArray = std::array<UniquePtr<FrameResource>, FrameResource::CIRCLE_COUNT>;
 
-        FrameResourceArray frameResources;
+        FrameResourceArray frameResources = {};
 
         UINT currFrameIndex = 0;
 
         FrameResource* CurrFrameResource() { return frameResources.at(currFrameIndex).get(); }
 
-        ComPtr<IDXGISwapChain3> swapChain;
+        ComPtr<IDXGISwapChain3> swapChain = {};
 
         const static DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
 
         void CreateSwapChain();
 
-        ComPtr<ID3D12DescriptorHeap> rtvHeap;
-        ComPtr<ID3D12DescriptorHeap> srvHeap;
-        ComPtr<ID3D12DescriptorHeap> dsvHeap;
+        ComPtr<ID3D12DescriptorHeap> rtvHeap = {};
+        ComPtr<ID3D12DescriptorHeap> srvHeap = {};
+        ComPtr<ID3D12DescriptorHeap> dsvHeap = {};
 
         void CreateRtvHeap();
         void CreateSrvHeap();
@@ -299,27 +298,27 @@ namespace d14engine::renderer
                 (UINT)deviceInfo.properties.descHandleIncrementSize.DSV);
         }
 
-        ComPtr<ID3D11On12Device> d3d11On12Device;
-        ComPtr<ID3D11DeviceContext> d3d11DeviceContext;
+        ComPtr<ID3D11On12Device> d3d11On12Device = {};
+        ComPtr<ID3D11DeviceContext> d3d11DeviceContext = {};
 
         void CreateD3D11On12Objects();
 
         // Keep an independent Direct2D factory in each renderer for convenience,
         // though we could maintain a common factory object like DXGI factory.
-        ComPtr<ID2D1Factory1> d2d1Factory;
+        ComPtr<ID2D1Factory1> d2d1Factory = {};
 
-        ComPtr<ID2D1Device> d2d1Device;
-        ComPtr<ID2D1DeviceContext> d2d1DeviceContext;
-        ComPtr<ID2D1Bitmap1> d2d1RenderTarget;
+        ComPtr<ID2D1Device> d2d1Device = {};
+        ComPtr<ID2D1DeviceContext> d2d1DeviceContext = {};
+        ComPtr<ID2D1Bitmap1> d2d1RenderTarget = {};
 
         // Also an independent DWrite factory in each renderer.
-        ComPtr<IDWriteFactory3> dWriteFactory;
+        ComPtr<IDWriteFactory3> dWriteFactory = {};
 
         void CreateD2D1Objects();
 
         void ResizeSwapChain();
 
-        ComPtr<ID3D12Resource> backBuffers[FrameResource::CIRCLE_COUNT];
+        ComPtr<ID3D12Resource> backBuffers[FrameResource::CIRCLE_COUNT] = {};
 
         void CreateBackBuffers();
 
@@ -332,7 +331,7 @@ namespace d14engine::renderer
 
         D3D12_CPU_DESCRIPTOR_HANDLE BackRtvHandle() { return GetRtvHandle(currFrameIndex); }
 
-        ComPtr<ID3D12Resource> sceneBuffer;
+        ComPtr<ID3D12Resource> sceneBuffer = {};
 
         void CreateSceneBuffer();
 
@@ -344,18 +343,18 @@ namespace d14engine::renderer
         D3D12_CPU_DESCRIPTOR_HANDLE SceneRtvHandle() { return GetRtvHandle(_countof(backBuffers)); }
         D3D12_CPU_DESCRIPTOR_HANDLE SceneDsvHandle() { return GetDsvHandle(0); }
 
-        ComPtr<ID3D11Resource> wrappedBuffer;
+        ComPtr<ID3D11Resource> wrappedBuffer = {};
 
         void CreateWrappedBuffer();
 
         const static DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
-        ComPtr<ID3D12Resource> sceneDepthStencilBuffer;
+        ComPtr<ID3D12Resource> sceneDepthStencilBuffer = {};
 
         void CreateDepthStencilBuffer();
 
         // MSAA (depth stencil) buffers will keep empty if MSAA is disabled.
-        ComPtr<ID3D12Resource> msaaBuffer, msaaDepthStencilBuffer;
+        ComPtr<ID3D12Resource> msaaBuffer = {}, msaaDepthStencilBuffer = {};
 
         void CreateMsaaBuffer();
         void CreateMsaaDepthStencilBuffer();
@@ -386,11 +385,11 @@ namespace d14engine::renderer
         using DrawLayerObjectMap = ISortable<IDrawLayer>::ShrdPriorityMap<DrawObjectSet>;
 
         // Drawn before 2D objects.
-        DrawLayerObjectMap preDrawLayerObjects;
+        DrawLayerObjectMap preDrawLayerObjects = {};
 
         void DrawD3D12Layer(DrawLayerObjectMap& target);
 
-        XMVECTORF32 sceneColor, letterboxColor;
+        XMVECTORF32 sceneColor = {}, letterboxColor = {};
 
         void SetSceneColor(const XMVECTORF32& sceneColor);
         void SetLetterboxColor(const XMVECTORF32& letterboxColor);
@@ -407,12 +406,12 @@ namespace d14engine::renderer
 
         using DrawObject2DSet = ISortable<IDrawObject2D>::ShrdPrioritySet;
 
-        DrawObject2DSet drawObjects2D;
+        DrawObject2DSet drawObjects2D = {};
 
         void DrawD2D1Layer();
 
         // Drawn after 2D objects.
-        DrawLayerObjectMap postDrawLayerObjects;
+        DrawLayerObjectMap postDrawLayerObjects = {};
 
         void DrawD3D12LayerMSAA();
 
@@ -430,10 +429,10 @@ namespace d14engine::renderer
 
         using AssociatedCameraSet = std::unordered_set<SharedPtr<ICamera>>;
 
-        AssociatedCameraSet associatedCameras;
+        AssociatedCameraSet associatedCameras = {};
 
         UINT fps = 0;
-        UniquePtr<Timer> timer;
+        UniquePtr<Timer> timer = {};
 
         // Since these 2D and text rendering settings are initialized with d2dDeviceContext and dWriteFactory,
         // there's no related configurable field provided in create info, but we can change them at runtime.
@@ -446,11 +445,11 @@ namespace d14engine::renderer
 
         struct TextRenderingSettings
         {
-            FLOAT gamma;
-            FLOAT enhancedContrast;
-            FLOAT clearTypeLevel;
-            DWRITE_PIXEL_GEOMETRY pixelGeometry;
-            DWRITE_RENDERING_MODE renderingMode;
+            FLOAT gamma = {};
+            FLOAT enhancedContrast = {};
+            FLOAT clearTypeLevel = {};
+            DWRITE_PIXEL_GEOMETRY pixelGeometry = {};
+            DWRITE_RENDERING_MODE renderingMode = {};
         };
 
         TextRenderingSettings GetDefaultTextRenderingMode();

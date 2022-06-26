@@ -29,6 +29,8 @@ namespace d14engine::ui
     * MakeRootUIObject corresponds to the 1st condition and MakeManagedUIObject the 2nd.
     */
 
+    struct Window;
+
     template<typename T, typename... Types>
     SharedPtr<T> MakeRootUIObject(Types&& ...args)
     {
@@ -48,7 +50,7 @@ namespace d14engine::ui
         return uiobj; // Help to reduce duplicated SetParent codes.
     }
 
-    struct Panel : ISortable<Panel>, IDrawObject2D, std::enable_shared_from_this<Panel>
+    struct Panel : std::enable_shared_from_this<Panel>, IDrawObject2D, ISortable<Panel>
     {
         // Implement interface methods.
 
@@ -78,10 +80,10 @@ namespace d14engine::ui
         D2D1_SIZE_F MinimalSize();
         D2D1_SIZE_F MaximalSize();
 
-        Optional<float> minimalWidth;
-        Optional<float> minimalHeight;
-        Optional<float> maximalWidth;
-        Optional<float> maximalHeight;
+        Optional<float> minimalWidth = {};
+        Optional<float> minimalHeight = {};
+        Optional<float> maximalWidth = {};
+        Optional<float> maximalHeight = {};
 
         // Return optional minimal-width and minimal-height (zero if empty) by default.
         // Use virtual so that derived class can force ignoring these config fields.
@@ -163,9 +165,9 @@ namespace d14engine::ui
             f_onMouseButtonBefore = {},
             f_onMouseButtonAfter = {};
 
-        bool OnMouseEnter(MouseEnterEvent& e);
+        bool OnMouseEnter(MouseMoveEvent& e);
 
-        Function<bool(Panel*,MouseEnterEvent&)>
+        Function<bool(Panel*,MouseMoveEvent&)>
             f_onMouseEnterOverride = {},
             f_onMouseEnterBefore = {},
             f_onMouseEnterAfter = {};
@@ -177,9 +179,9 @@ namespace d14engine::ui
             f_onMouseMoveBefore = {},
             f_onMouseMoveAfter = {};
 
-        bool OnMouseLeave(MouseLeaveEvent& e);
+        bool OnMouseLeave(MouseMoveEvent& e);
 
-        Function<bool(Panel*,MouseLeaveEvent&)>
+        Function<bool(Panel*,MouseMoveEvent&)>
             f_onMouseLeaveOverride = {},
             f_onMouseLeaveBefore = {},
             f_onMouseLeaveAfter = {};
@@ -229,9 +231,9 @@ namespace d14engine::ui
         virtual bool OnGetFocusHelper();
         virtual bool OnLoseFocusHelper();
         virtual bool OnMouseButtonHelper(MouseButtonEvent& e);
-        virtual bool OnMouseEnterHelper(MouseEnterEvent& e);
+        virtual bool OnMouseEnterHelper(MouseMoveEvent& e);
         virtual bool OnMouseMoveHelper(MouseMoveEvent& e);
-        virtual bool OnMouseLeaveHelper(MouseLeaveEvent& e);
+        virtual bool OnMouseLeaveHelper(MouseMoveEvent& e);
         virtual bool OnMouseWheelHelper(MouseWheelEvent& e);
         virtual bool OnKeyboardHelper(KeyboardEvent& e);
 
@@ -266,10 +268,10 @@ namespace d14engine::ui
     protected:
         bool m_isVisible = true;
 
-        D2D1_RECT_F m_rect;
+        D2D1_RECT_F m_rect = {};
         
         // Cache this to reduce the computational overhead during rendering.
-        D2D1_RECT_F m_absoluteRect;
+        D2D1_RECT_F m_absoluteRect = {};
 
     public:
         // This is the same as IsD2D1ObjectVisible for Panel since there're only D2D1 objects.
@@ -338,6 +340,19 @@ namespace d14engine::ui
 
         void UpdateAbsoluteRect();
 
+    protected:
+        struct TopmostWindowPriority
+        {
+            int d2d1Object = INT_MIN;
+            int uiObject = INT_MAX;
+        }
+        m_topmostWindowPriority = {};
+
+    public:
+        void MoveChildWindowTopmost(Panel* w);
+
+        void MoveTopmost();
+
     public:
         ComPtr<ID2D1Brush> brush = nullptr;
 
@@ -378,20 +393,20 @@ namespace d14engine::ui
             f_onRendererDrawD2D1ObjectAfter = {};
 
     protected:
-        Renderer::DrawObject2DSet m_drawObjects2D;
+        Renderer::DrawObject2DSet m_drawObjects2D = {};
 
         // Don't use SharedPtr here since it will cause circular reference.
-        WeakPtr<Panel> m_parent;
+        WeakPtr<Panel> m_parent = {};
 
         using ChildObjectSet = std::unordered_set<SharedPtr<Panel>>;
 
-        ChildObjectSet m_children;
+        ChildObjectSet m_children = {};
 
         using ChildObjectPrioritySet = ISortable<Panel>::WeakPrioritySet;
 
-        ChildObjectPrioritySet m_hitChildren;
+        ChildObjectPrioritySet m_hitChildren = {};
 
         // Pinned children keep receiving UI events even though they are not hit.
-        ChildObjectPrioritySet m_pinnedChildren, m_diffPinnedChildren;
+        ChildObjectPrioritySet m_pinnedChildren = {}, m_diffPinnedChildren = {};
     };
 }

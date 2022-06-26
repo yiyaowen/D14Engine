@@ -3,6 +3,8 @@
 #include "UI/ElevatedButton.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/Application.h"
 
 namespace d14engine::ui
@@ -81,7 +83,7 @@ namespace d14engine::ui
         return FilledButton::OnMouseButtonHelper(e);
     }
 
-    bool ElevatedButton::OnMouseLeaveHelper(MouseLeaveEvent& e)
+    bool ElevatedButton::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         shadowOpacity = 1.0f;
 

@@ -31,6 +31,6 @@ namespace d14engine::ui
 
         bool OnMouseButtonHelper(MouseButtonEvent& e) override;
 
-        bool OnMouseLeaveHelper(MouseLeaveEvent& e) override;
+        bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
     };
 }

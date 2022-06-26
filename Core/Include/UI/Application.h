@@ -9,6 +9,8 @@ using namespace d14engine::renderer;
 #include "BitmapUtils.h"
 #include "Cursor.h"
 #include "Panel.h"
+#include "TextInputObject.h"
+#include "Window.h"
 
 namespace d14engine::ui
 {
@@ -71,8 +73,6 @@ namespace d14engine::ui
         // and the actual focus transition will be performed in the next event pass.
         void FocusUIObjectLater(WeakPtrParam<Panel> uiobj);
 
-        void ChangeTheme(WstrViewParam themeName);
-
     private:
         // This method will update the diff-pinned set immediately, which is dangerous
         // when the container is being iterated. See UpdateDiffPinnedUIObjectsLater.
@@ -85,15 +85,20 @@ namespace d14engine::ui
         void UpdateDiffPinnedUIObjectsLater();
 
     private:
+        WeakPtr<TextInputObject> m_focusedTextInputObject = {};
+
+        void BroadcastInputStringEvent(WstrViewParam content);
+
+    private:
         static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-        HWND m_window;
+        HWND m_window = {};
 
         // The application only maintains one Win32 window during its lifecycle,
         // and the renderer will take over the display work of all UI objects.
         // Thus all children (UI objects) are rendered within the main window,
         // where the main window actually becomes the "desktop" of the application.
-        UniquePtr<Renderer> m_renderer;
+        UniquePtr<Renderer> m_renderer = {};
 
         // This field indicates whether the renderer should be updated in the main while-loop.
         // When the application keeps idle, there's no need to draw frames continuously;
@@ -103,18 +108,36 @@ namespace d14engine::ui
 
         using UIObjectSet = std::unordered_set<SharedPtr<Panel>>;
 
-        UIObjectSet m_uiobjects;
+        UIObjectSet m_uiobjects = {};
 
         using UIObjectPrioritySet = ISortable<Panel>::WeakPrioritySet;
 
-        UIObjectPrioritySet m_hitUIObjects;
+        UIObjectPrioritySet m_hitUIObjects = {};
         
         // Pinned objects keep receiving UI events even though they are not hit.
-        UIObjectPrioritySet m_pinnedUIObjects, m_diffPinnedUIObjects;
+        UIObjectPrioritySet m_pinnedUIObjects = {}, m_diffPinnedUIObjects = {};
 
-        SharedPtr<Cursor> m_cursor;
+        SharedPtr<Cursor> m_cursor = {};
 
-        WeakPtr<Panel> m_focusedUIObject;
+        WeakPtr<Panel> m_focusedUIObject = {};
+
+    public:
+        const Wstring& CurrentThemeName();
+        void ChangeTheme(WstrViewParam themeName);
+
+    private:
+        Wstring m_currThemeName = L"Light";
+
+    public:
+        void MoveRootWindowTopmost(Panel* w);
+
+    private:
+        struct TopmostWindowPriority
+        {
+            int d2d1Object = INT_MIN;
+            int uiObject = INT_MAX;
+        }
+        m_topmostWindowPriority = {};
 
     public:
         enum class CustomWinMessage
@@ -127,11 +150,11 @@ namespace d14engine::ui
         void PostCustomWinMessage(CustomWinMessage message);
 
     private:
-        WeakPtr<Panel> m_nextFocusedCandidate;
+        WeakPtr<Panel> m_nextFocusedCandidate = {};
 
         using NextDiffPinnedUpdatingCandidates = std::set<WeakPtr<Panel>, std::owner_less<WeakPtr<Panel>>>;
 
-        NextDiffPinnedUpdatingCandidates m_nextDiffPinnedUpdatingCandidates;
+        NextDiffPinnedUpdatingCandidates m_nextDiffPinnedUpdatingCandidates = {};
 
     public:
         void MarkDiffPinnedUpdatingCandidate(WeakPtrParam<Panel> uiobj);

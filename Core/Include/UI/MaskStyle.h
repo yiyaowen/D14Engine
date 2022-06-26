@@ -11,9 +11,10 @@ namespace d14engine::ui
             UINT maskBitmapHeight,
             D2D1_COLOR_F maskColor = { 0.0f, 0.0f, 0.0f, 0.0f });
 
-        D2D1_COLOR_F maskColor;
+        D2D1_COLOR_F maskColor = {};
+        float maskOpacity = 1.0f;
 
-        ComPtr<ID2D1Bitmap1> maskBitmap;
+        ComPtr<ID2D1Bitmap1> maskBitmap = {};
 
         void LoadMaskBitmap(UINT width, UINT height);
 

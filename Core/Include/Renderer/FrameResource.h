@@ -3,7 +3,6 @@
 #include "Precompile.h"
 
 #include "GraphUtils.h"
-#include "RuntimeError.h"
 
 namespace d14engine::renderer
 {
@@ -16,7 +15,7 @@ namespace d14engine::renderer
     
         using CmdAllocArray = std::array<ComPtr<ID3D12CommandAllocator>, (size_t)CmdLayer::Count>;
 
-        CmdAllocArray cmdAllocs;
+        CmdAllocArray cmdAllocs = {};
 
         UINT64 fenceValue = 0;
 

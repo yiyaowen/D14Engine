@@ -4,10 +4,11 @@
 
 #include "Label.h"
 #include "MaskStyle.h"
+#include "TextInputObject.h"
 
 namespace d14engine::ui
 {
-    struct TextBox : Panel, protected MaskStyle, SolidStyle
+    struct TextBox : Panel, protected MaskStyle, SolidStyle, TextInputObject
     {
         TextBox(const D2D1_RECT_F& rect, float roundRadius = 0.0f);
 
@@ -56,16 +57,16 @@ namespace d14engine::ui
         void SetIndicatorPosition(size_t characterOffset);
 
     protected:
-        SharedPtr<Label> m_textLabel;
+        SharedPtr<Label> m_textLabel = {};
 
         CharacterRange m_hiliteTextRange = { 0, 0 };
 
-        SharedPtr<Label> m_hiliteTextLabel;
+        SharedPtr<Label> m_hiliteTextLabel = {};
 
         // To keep the text displayed within single line, the label's rect
         // must be set to infinite width (FLT_MAX), so we need to maintain
         // an extra protected field for the actual visible text rectangle.
-        D2D1_RECT_F m_visibleTextRect;
+        D2D1_RECT_F m_visibleTextRect = {};
 
         D2D1_RECT_F VisibleTextAbsoluteRect();
 
@@ -104,7 +105,7 @@ namespace d14engine::ui
             f_onTextChangeAfter = {};
 
     protected:
-        void TriggerNormalInput(KeyboardEvent& e);
+        void TriggerNormalInput(WstrViewParam content);
         void TriggerControlCommands(KeyboardEvent& e);
 
         void PerformCopyCommand();
@@ -135,5 +136,10 @@ namespace d14engine::ui
         bool OnMouseMoveHelper(MouseMoveEvent& e) override;
 
         bool OnKeyboardHelper(KeyboardEvent& e) override;
+
+        // TextInputObject
+        Optional<COMPOSITIONFORM> GetCompositionForm() override;
+
+        void OnInputStringHelper(WstrViewParam content) override;
     };
 }

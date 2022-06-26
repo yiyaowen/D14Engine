@@ -3,6 +3,8 @@
 #include "UI/AnimTextBox.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/AnimationUtils.h"
 #include "UI/Application.h"
 
@@ -142,7 +144,7 @@ namespace d14engine::ui
         return TextBox::OnLoseFocusHelper();
     }
 
-    bool AnimTextBox::OnMouseEnterHelper(MouseEnterEvent& e)
+    bool AnimTextBox::OnMouseEnterHelper(MouseMoveEvent& e)
     {
         if (!Application::APP->IsUIObjectFocused(weak_from_this()))
         {
@@ -152,7 +154,7 @@ namespace d14engine::ui
         return Panel::OnMouseEnterHelper(e);
     }
 
-    bool AnimTextBox::OnMouseLeaveHelper(MouseLeaveEvent& e)
+    bool AnimTextBox::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         if (!Application::APP->IsUIObjectFocused(weak_from_this()))
         {

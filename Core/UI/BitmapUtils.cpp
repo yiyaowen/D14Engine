@@ -6,7 +6,7 @@
 
 namespace d14engine::ui
 {
-    ComPtr<IWICImagingFactory> BitmapUtils::g_imageFactory;
+    ComPtr<IWICImagingFactory> BitmapUtils::g_imageFactory = {};
 
     void BitmapUtils::Initialize()
     {

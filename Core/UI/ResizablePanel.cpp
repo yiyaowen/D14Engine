@@ -3,6 +3,8 @@
 #include "UI/ResizablePanel.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/Application.h"
 
 namespace d14engine::ui

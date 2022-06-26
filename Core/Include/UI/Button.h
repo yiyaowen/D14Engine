@@ -2,7 +2,6 @@
 
 #include "Precompile.h"
 
-#include "Event.h"
 #include "Label.h"
 #include "SolidStyle.h"
 #include "StrokeStyle.h"
@@ -17,9 +16,10 @@ namespace d14engine::ui
             float roundRadius = 0.0f,
             ComPtrParam<ID2D1Bitmap1> icon = nullptr);
 
-        SharedPtr<Label> textLabel;
+        SharedPtr<Label> textLabel = {};
 
-        D2D1_RECT_F iconRect;
+        // This field decides the rectangle of the icon bitmap in self-coordinate.
+        D2D1_RECT_F iconRect = {};
 
         void OnInitializeFinish() override;
 
@@ -30,20 +30,20 @@ namespace d14engine::ui
 
         struct Appearance
         {
-            D2D1_COLOR_F backgroundColor = (D2D1::ColorF)D2D1::ColorF::White;
-            float backgroundOpacity = 1.0f;
+            D2D1_COLOR_F backgroundColor = {};
+            float backgroundOpacity = {};
 
-            ComPtr<ID2D1Bitmap1> bitmap;
-            float bitmapOpacity = 1.0f;
+            ComPtr<ID2D1Bitmap1> bitmap = {};
+            float bitmapOpacity = {};
 
-            D2D1_COLOR_F foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-            float foregroundOpacity = 1.0f;
+            D2D1_COLOR_F foregroundColor = {};
+            float foregroundOpacity = {};
 
-            D2D1_COLOR_F strokeColor = (D2D1::ColorF)D2D1::ColorF::Black;
-            float strokeOpacity = 1.0f;
-            float strokeWidth = 0.0f;
+            D2D1_COLOR_F strokeColor = {};
+            float strokeOpacity = {};
+            float strokeWidth = {};
         }
-        appearances[(size_t)State::Count];
+        appearances[(size_t)State::Count] = {};
 
     protected:
         void UpdateAppearanceSetting(State state);
@@ -84,16 +84,16 @@ namespace d14engine::ui
         void OnPress(Event& e);
 
         Function<void(Button*,Event&)>
-            f_onPressOverride,
-            f_onPressBefore,
-            f_onPressAfter;
+            f_onPressOverride = {},
+            f_onPressBefore = {},
+            f_onPressAfter = {};
 
         void OnRelease(Event& e);
 
         Function<void(Button*,Event&)>
-            f_onReleaseOverride,
-            f_onReleaseBefore,
-            f_onReleaseAfter;
+            f_onReleaseOverride = {},
+            f_onReleaseBefore = {},
+            f_onReleaseAfter = {};
 
     protected:
         virtual void OnPressHelper(Event& e);
@@ -112,8 +112,8 @@ namespace d14engine::ui
 
         bool OnMouseButtonHelper(MouseButtonEvent& e) override;
 
-        bool OnMouseEnterHelper(MouseEnterEvent& e) override;
+        bool OnMouseEnterHelper(MouseMoveEvent& e) override;
 
-        bool OnMouseLeaveHelper(MouseLeaveEvent& e) override;
+        bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
     };
 }

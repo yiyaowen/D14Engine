@@ -2,13 +2,13 @@
 
 #include "Precompile.h"
 
-#include "ResizablePanel.h"
-
 #include "Label.h"
 #include "MaskStyle.h"
+#include "ResizablePanel.h"
 #include "ShadowStyle.h"
 #include "SolidStyle.h"
 #include "StrokeStyle.h"
+#include "Window.h"
 
 namespace d14engine::ui
 {
@@ -24,12 +24,12 @@ namespace d14engine::ui
 
         struct TabSeparatorStyle
         {
-            float height = 0.0f;
+            float height = {};
 
-            D2D1_COLOR_F color = (D2D1::ColorF)D2D1::ColorF::Black;
-            float opacity = 1.0f;
+            D2D1_COLOR_F color = {};
+            float opacity = {};
 
-            float strokeWidth = 0.0f;
+            float strokeWidth = {};
         }
         tabSeparatorStyle = {};
 
@@ -42,66 +42,81 @@ namespace d14engine::ui
         {
             struct Card
             {
-                float height = 0.0f;
+                float height = {};
 
-                float roundRadius = 0.0f;
+                float roundRadius = {};
 
-                D2D1_COLOR_F color = (D2D1::ColorF)D2D1::ColorF::Black;
-                float opacity = 1.0f;
+                D2D1_COLOR_F color = {};
+                float opacity = {};
             }
             card = {};
 
+            struct Icon
+            {
+                D2D1_SIZE_F size = {};
+                float leftOffset = {};
+
+                ComPtr<ID2D1Bitmap1> bitmap = {};
+                float opacity = {};
+            }
+            icon = {};
+
             struct Title
             {
-                D2D1_SIZE_F size = { 0.0f, 0.0f };
-                float leftOffset = 0.0f;
+                D2D1_SIZE_F size = {};
+                float leftOffset = {};
 
-                ComPtr<IDWriteTextFormat> format;
+                ComPtr<IDWriteTextFormat> format = {};
 
-                D2D1_COLOR_F foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-                float foregroundOpacity = 1.0f;
+                D2D1_COLOR_F foregroundColor = {};
+                float foregroundOpacity = {};
 
-                D2D1_COLOR_F backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-                float backgroundOpacity = 1.0f;
+                D2D1_COLOR_F backgroundColor = {};
+                float backgroundOpacity = {};
             }
             title = {};
 
             struct CloseX
             {
-                D2D1_SIZE_F size = { 0.0f, 0.0f };
-                float rightOffset = 0.0f;
+                D2D1_SIZE_F size = {};
+                float rightOffset = {};
 
                 // Left/top-most distance between background panel and "X" icon.
-                float bkgnPanelOffset = 0.0f;
-                float bkgnPanelRoundRadius = 0.0f;
+                float bkgnPanelOffset = {};
+                float bkgnPanelRoundRadius = {};
 
                 struct ColorScheme
                 {
-                    D2D1_COLOR_F foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-                    float foregroundOpacity = 1.0f;
+                    D2D1_COLOR_F foregroundColor = {};
+                    float foregroundOpacity = {};
 
-                    D2D1_COLOR_F backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-                    float backgroundOpacity = 1.0f;
+                    D2D1_COLOR_F backgroundColor = {};
+                    float backgroundOpacity = {};
                 }
-                colorSchemes[(size_t)TabCloseXState::Count];
+                colorSchemes[(size_t)TabCloseXState::Count] = {};
 
-                float strokeWidth = 0.0f;
+                float strokeWidth = {};
             }
             closeX = {};
         }
-        tabAppearances[(size_t)TabState::Count];
+        tabAppearances[(size_t)TabState::Count] = {};
 
     public:
+        struct Page { SharedPtr<Label> title; SharedPtr<Panel> content; };
+
+        Page* FindPage(size_t index);
+        Page* FindPage(WstrParam title);
+
         void SelectPage(size_t index);
         void SelectPage(WstrParam title);
-
-        struct Page { SharedPtr<Label> title; SharedPtr<Panel> content; };
 
         void InsertPage(const Page& page, size_t index = 0);
         void AppendPage(const Page& page);
 
         void RemovePage(size_t index);
         void RemovePage(WstrParam title);
+
+        size_t AvailablePageCount();
 
     protected:
         float m_cardWidth = 120.0f;
@@ -110,7 +125,7 @@ namespace d14engine::ui
 
         using PageArray = std::vector<Page>;
 
-        PageArray m_pages;
+        PageArray m_pages = {};
 
         size_t m_currActivePageIndex = SIZE_T_MAX;
         size_t m_currHoverPageIndex = SIZE_T_MAX;
@@ -119,9 +134,12 @@ namespace d14engine::ui
 
         // Maintain state of each card's close-x button respectively.
         // Their element sizes should always equal to page-array's.
-        TabCloseXStateArray m_tabCloseXHoverStates, m_tabCloseXDownStates;
+        TabCloseXStateArray m_tabCloseXHoverStates = {}, m_tabCloseXDownStates = {};
 
         size_t m_dragCardIndex = SIZE_T_MAX;
+
+        // The position of dragged point on card in self-coordinate.
+        D2D1_POINT_2F m_dragPoint = {};
 
     public:
         float CardWidth();
@@ -137,15 +155,35 @@ namespace d14engine::ui
         D2D1_RECT_F CardRect(size_t index);
         D2D1_POINT_2F CardPosition(size_t index);
 
+        D2D1_RECT_F IconRect(size_t index);
         D2D1_RECT_F TitleRect(size_t index);
         D2D1_RECT_F CloseXRect(size_t index);
         D2D1_RECT_F CloseXBkgnPanelRect(size_t index);
 
-        void UpdateTitleAppearance(size_t index);
-        void UpdateTitleAppearanceForAllPages();
-
+        void DrawCardIcon(Renderer* rndr, size_t index);
         void DrawTitleLabel(Renderer* rndr, size_t index);
         void DrawCloseXButton(Renderer* rndr, size_t index);
+
+        void TriggerPagePromoteEvent(MouseMoveEvent& e);
+
+    public:
+        SharedPtr<Window> PromotePageToWindow(size_t index);
+
+        struct MaskStyleWhenBelowDragWindow
+        {
+            D2D1_COLOR_F color = {};
+            float opacity = {};
+        }
+        maskStyleWhenBelowDragWindow = {};
+
+        // When a window is being dragged, all registered tab-groups will be
+        // associated with the window. After the window is released above
+        // any tab-group, its center UI object (if has) will be demoted as
+        // a new page and then its content will be added into the tab-group.
+        WeakPtr<Window> temporaryAssociatedWindow = {};
+
+    protected:
+        bool IsTemporaryWindowDragAbove();
 
     public:
         // Override interface methods.
@@ -167,5 +205,7 @@ namespace d14engine::ui
         bool OnMouseButtonHelper(MouseButtonEvent& e) override;
 
         bool OnMouseMoveHelper(MouseMoveEvent& e) override;
+
+        bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
     };
 }

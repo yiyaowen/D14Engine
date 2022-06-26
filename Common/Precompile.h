@@ -68,6 +68,7 @@ namespace d14engine
 #include <dwmapi.h>
 #include <dwrite_3.h>
 #include <dxgi1_6.h>
+#include <imm.h>
 #include <wincodec.h>
 #include <Windows.h>
 #include <windowsx.h>
@@ -98,4 +99,5 @@ namespace d14engine
 #pragma comment(lib, "Dwmapi.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "WindowsCodecs.lib")

@@ -3,6 +3,8 @@
 #include "UI/Button.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/Application.h"
 
 namespace d14engine::ui
@@ -280,14 +282,14 @@ namespace d14engine::ui
         return Panel::OnMouseButtonHelper(e);
     }
 
-    bool Button::OnMouseEnterHelper(MouseEnterEvent& e)
+    bool Button::OnMouseEnterHelper(MouseMoveEvent& e)
     {
         UpdateAppearanceSetting(State::Hover);
 
         return Panel::OnMouseEnterHelper(e);
     }
 
-    bool Button::OnMouseLeaveHelper(MouseLeaveEvent& e)
+    bool Button::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         m_hasLeftPressed = m_hasRightPressed = m_hasMiddlePressed = false;
 

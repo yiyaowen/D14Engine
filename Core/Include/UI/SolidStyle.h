@@ -10,7 +10,7 @@ namespace d14engine::ui
             D2D1_COLOR_F backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black,
             float backgroundOpacity = 1.0f);
 
-        D2D1_COLOR_F backgroundColor;
-        float backgroundOpacity;
+        D2D1_COLOR_F backgroundColor = {};
+        float backgroundOpacity = {};
     };
 }

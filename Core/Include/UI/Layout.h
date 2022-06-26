@@ -3,6 +3,7 @@
 #include "Precompile.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
 
 #include "ResizablePanel.h"
 #include "SolidStyle.h"
@@ -65,7 +66,7 @@ namespace d14engine::ui
     protected:
         using ElementGeometryInfoMap = std::map<WeakPtr<Panel>, GeometryInfo_T, std::owner_less<WeakPtr<Panel>>>;
 
-        ElementGeometryInfoMap m_elemGeoInfos;
+        ElementGeometryInfoMap m_elemGeoInfos = {};
 
         virtual void UpdateElement(typename ElementGeometryInfoMap::iterator& elemItor) = 0;
 

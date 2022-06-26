@@ -3,6 +3,8 @@
 #include "UI/OnOffSwitch.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/AnimationUtils.h"
 #include "UI/Application.h"
 #include "UI/UIResourceUtils.h"
@@ -14,27 +16,8 @@ namespace d14engine::ui
         Panel(rect, UIResu::SOLID_COLOR_BRUSH)
     {
         roundRadiusX = roundRadiusY = roundRadius;
-    }
 
-    void OnOffSwitch::OnStateChange(Event& e)
-    {
-        if (f_onStateChangeOverride)
-        {
-            f_onStateChangeOverride(this, e);
-        }
-        else
-        {
-            if (f_onStateChangeBefore) f_onStateChangeBefore(this, e);
-
-            OnStateChangeHelper(e);
-
-            if (f_onStateChangeAfter) f_onStateChangeAfter(this, e);
-        }
-    }
-
-    void OnOffSwitch::OnStateChangeHelper(Event& e)
-    {
-        // TODO: add on-off switch state changing logic.
+        m_state = { State::ActiveFlag::Off, State::ButtonFlag::Idle };
     }
 
     void OnOffSwitch::OnRendererUpdateObject2DHelper(Renderer* rndr)
@@ -359,44 +342,46 @@ namespace d14engine::ui
 
             m_hasLeftPressed = true;
         }
-        else if (e.status.LeftUp() && m_hasLeftPressed &&
-                 m_targetActiveState == State::ActiveFlag::Finished)
+        else if (e.status.LeftUp())
         {
-            m_state.buttonFlag = State::ButtonFlag::Hover;
-
-            m_hasLeftPressed = false;
-
-            // Switch current active state.
-            if (m_state.activeFlag == State::ActiveFlag::On)
+            if (m_hasLeftPressed && m_targetActiveState == State::ActiveFlag::Finished)
             {
-                m_state.activeFlag = State::ActiveFlag::Off;
+                m_state.buttonFlag = State::ButtonFlag::Hover;
+
+                m_hasLeftPressed = false;
+
+                // Switch current active state.
+                if (m_state.activeFlag == State::ActiveFlag::On)
+                {
+                    m_state.activeFlag = State::ActiveFlag::Off;
+                }
+                else m_state.activeFlag = State::ActiveFlag::On;
+
+                // Trigger state changing event.
+                Event e = {};
+                e.flag = m_state.activeFlag;
+
+                OnStateChange(e);
+
+                // Update animation flag and condition.
+                m_currHandleDisplacement = 0.0f;
+                m_currHandleOffsetToLeft = 0.0f;
+
+                m_targetActiveState = m_state.activeFlag;
+                Application::APP->IncreaseAnimateCount();
             }
-            else m_state.activeFlag = State::ActiveFlag::On;
-
-            // Trigger state changing event.
-            Event e = {}; 
-            e.flag = m_state.activeFlag;
-
-            OnStateChange(e);
-
-            // Update animation flag and condition.
-            m_currHandleDisplacement = 0.0f;
-            m_currHandleOffsetToLeft = 0.0f;
-
-            m_targetActiveState = m_state.activeFlag;
-            Application::APP->IncreaseAnimateCount();
         }
         return Panel::OnMouseButtonHelper(e);
     }
 
-    bool OnOffSwitch::OnMouseEnterHelper(MouseEnterEvent& e)
+    bool OnOffSwitch::OnMouseEnterHelper(MouseMoveEvent& e)
     {
         m_state.buttonFlag = State::ButtonFlag::Hover;
 
         return Panel::OnMouseEnterHelper(e);
     }
 
-    bool OnOffSwitch::OnMouseLeaveHelper(MouseLeaveEvent& e)
+    bool OnOffSwitch::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         m_state.buttonFlag = State::ButtonFlag::Idle;
 

@@ -314,38 +314,25 @@ namespace d14engine::ui
         // TODO: add text box text changing logic.
     }
 
-    void TextBox::TriggerNormalInput(KeyboardEvent& e)
+    void TextBox::TriggerNormalInput(WstrViewParam content)
     {
-        auto chItor = UIResu::US_KEYBOARD_LAYOUT.find((int)e.vkey);
-        if (chItor != UIResu::US_KEYBOARD_LAYOUT.end())
+        if (m_hiliteTextRange.count > 0)
         {
-            bool useAlternative = (e.LSHIFT() || e.RSHIFT());
-            // Take Caps-Lock into consideration for the alphabetic characters.
-            if (chItor->first >= 0x41 && chItor->first <= 0x5A) // A ~ Z
-            {
-                // Use key-state with 0x0001 instead of async-key-state with 0x8000 to check state.
-                if (GetKeyState(VK_CAPITAL) & 0x0001) useAlternative = !useAlternative;
-            }
-            auto& character = useAlternative ? chItor->second.alternative : chItor->second.normal;
+            m_textLabel->EraseTextFragment(m_hiliteTextRange);
+            m_textLabel->InsertTextFragment(content, m_hiliteTextRange.offset);
 
-            if (m_hiliteTextRange.count > 0)
-            {
-                m_textLabel->EraseTextFragment(m_hiliteTextRange);
-                m_textLabel->InsertTextFragment({ &character, 1 }, m_hiliteTextRange.offset);
+            SetIndicatorPosition(m_hiliteTextRange.offset + content.size());
+            SetHiliteTextRange({ 0, 0 });
 
-                SetIndicatorPosition(m_hiliteTextRange.offset + 1);
-                SetHiliteTextRange({ 0, 0 });
+            OnTextChange();
+        }
+        else // Insert new string in place.
+        {
+            m_textLabel->InsertTextFragment(content, m_indicatorOffsetCount);
 
-                OnTextChange();
-            }
-            else // Insert single character.
-            {
-                m_textLabel->InsertTextFragment({ &character, 1 }, m_indicatorOffsetCount);
+            SetIndicatorPosition(m_indicatorOffsetCount + content.size());
 
-                SetIndicatorPosition(m_indicatorOffsetCount + 1);
-
-                OnTextChange();
-            }
+            OnTextChange();
         }
     }
 
@@ -683,10 +670,6 @@ namespace d14engine::ui
                     {
                         TriggerControlCommands(e);
                     }
-                    else // Handle printable characters.
-                    {
-                        TriggerNormalInput(e);
-                    }
                     break;
                 }}
                 m_isIndicatorVisible = true;
@@ -694,5 +677,28 @@ namespace d14engine::ui
             }
         }
         return Panel::OnKeyboardHelper(e);
+    }
+
+    Optional<COMPOSITIONFORM> TextBox::GetCompositionForm()
+    {
+        COMPOSITIONFORM form = {};
+        form.dwStyle = CFS_POINT;
+        form.ptCurrentPos =
+        {
+            (LONG)(m_absoluteRect.left + m_indicatorPositionX),
+            (LONG)m_absoluteRect.bottom
+        };
+        return form;
+    }
+
+    void TextBox::OnInputStringHelper(WstrViewParam content)
+    {
+        TextInputObject::OnInputStringHelper(content);
+
+        // Ignore those unprintable control characters.
+        if (content.size() != 1 || content[0] >= L' ')
+        {
+            TriggerNormalInput(content);
+        }
     }
 }

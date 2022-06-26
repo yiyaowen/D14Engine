@@ -1,4 +1,5 @@
 ﻿#include "Precompile.h"
+#include "RuntimeError.h"
 
 #include "Renderer/GpuBuffer.h"
 

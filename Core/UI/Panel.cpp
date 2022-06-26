@@ -3,6 +3,8 @@
 #include "UI/Panel.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/Application.h"
 
 namespace d14engine::ui
@@ -91,7 +93,7 @@ namespace d14engine::ui
         auto originalValue = m_skipChangeChildrenTheme;
         m_skipChangeChildrenTheme = true;
 
-        OnChangeThemeHelper(L"Light");
+        OnChangeThemeHelper(Application::APP->CurrentThemeName());
 
         m_skipChangeChildrenTheme = originalValue;
     }
@@ -279,7 +281,7 @@ namespace d14engine::ui
         }
     }
 
-    bool Panel::OnMouseEnter(MouseEnterEvent& e)
+    bool Panel::OnMouseEnter(MouseMoveEvent& e)
     {
         if (f_onMouseEnterOverride)
         {
@@ -311,7 +313,7 @@ namespace d14engine::ui
         }
     }
 
-    bool Panel::OnMouseLeave(MouseLeaveEvent& e)
+    bool Panel::OnMouseLeave(MouseMoveEvent& e)
     {
         if (f_onMouseLeaveOverride)
         {
@@ -442,7 +444,7 @@ namespace d14engine::ui
         return false;
     }
 
-    bool Panel::OnMouseEnterHelper(MouseEnterEvent& e)
+    bool Panel::OnMouseEnterHelper(MouseMoveEvent& e)
     {
         return false;
     }
@@ -459,10 +461,6 @@ namespace d14engine::ui
                 currHitChildren.insert(child);
             }
         }
-        // OnMouseEnter
-        MouseEnterEvent mee = {};
-        mee.cursorPoint = e.cursorPoint;
-
         ISortable<Panel>::Foreach(currHitChildren, [&](ShrdPtrParam<Panel> child)
         {
             // Moved in just now, trigger OnMouseEnter event.
@@ -470,15 +468,11 @@ namespace d14engine::ui
             {
                 if (child->appEventFlags.mouse.enter)
                 {
-                    return child->OnMouseEnter(mee);
+                    return child->OnMouseEnter(e);
                 }
             }
             return false;
         });
-        // OnMouseLeave
-        MouseLeaveEvent mle = {};
-        mle.cursorPoint = e.lastCursorPoint;
-
         ISortable<Panel>::Foreach(m_hitChildren, [&](ShrdPtrParam<Panel> child)
         {
             // Moved out just now, trigger OnMouseLeave event.
@@ -486,7 +480,7 @@ namespace d14engine::ui
             {
                 if (child->appEventFlags.mouse.leave)
                 {
-                    return child->OnMouseLeave(mle);
+                    return child->OnMouseLeave(e);
                 }
             }
             return false;
@@ -516,7 +510,7 @@ namespace d14engine::ui
         return false;
     }
 
-    bool Panel::OnMouseLeaveHelper(MouseLeaveEvent& e)
+    bool Panel::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         return false;
     }
@@ -847,42 +841,58 @@ namespace d14engine::ui
 
     void Panel::SetUIObjectPriority(int value)
     {
-        ISortable<Panel>::m_priority = value;
-
+        // std::set is implemented with red-black tree and its equality check
+        // relies on strong order relation, which means that to find whether
+        // two elements are equal we need to compare them twice:
+        // we say "a == b" if and only if "a > b" if false and "a < b" is false.
+        // Since we introduce "priority" as one of the sorting criteria,
+        // so we must not change it before equality-check-dependent operations.
         if (m_parent.expired())
         {
             if (Application::APP->FindUIObject(shared_from_this()))
             {
                 UnregisterApplicationEvents();
+
+                // Update priority after find and erase operations.
+                ISortable<Panel>::m_priority = value;
                 RegisterApplicationEvents();
             }
         }
         else // Managed by parent object.
         {
-            auto tmpParent = m_parent.lock();
-            tmpParent->RemoveUIObject(shared_from_this());
-            tmpParent->AddUIObject(shared_from_this());
+            auto parent = m_parent.lock();
+            parent->RemoveUIObject(shared_from_this());
+
+            // Update priority after erase operation.
+            ISortable<Panel>::m_priority = value;
+            parent->AddUIObject(shared_from_this());
         }
+        // Always update priority whether it is registered or not.
+        ISortable<Panel>::m_priority = value;
     }
 
     void Panel::SetD2D1ObjectPriority(int value)
     {
-        ISortable<IDrawObject2D>::m_priority = value;
-
+        // See SetUIObjectPriority above for explanation of updating priority 3 times.
         if (m_parent.expired())
         {
             if (Application::APP->MainRenderer()->FindDrawObject2D(shared_from_this()))
             {
                 UnregisterDrawObjects();
+
+                ISortable<IDrawObject2D>::m_priority = value;
                 RegisterDrawObjects();
             }
         }
         else // Managed by parent object.
         {
-            auto tmpParent = m_parent.lock();
-            tmpParent->RemoveUIObject(shared_from_this());
-            tmpParent->AddUIObject(shared_from_this());
+            auto parent = m_parent.lock();
+            parent->RemoveUIObject(shared_from_this());
+
+            ISortable<IDrawObject2D>::m_priority = value;
+            parent->AddUIObject(shared_from_this());
         }
+        ISortable<IDrawObject2D>::m_priority = value;
     }
 
     void Panel::UpdateAbsoluteRect()
@@ -921,6 +931,24 @@ namespace d14engine::ui
             me.position = { m_rect.left, m_rect.top };
 
             OnMove(me);
+        }
+    }
+
+    void Panel::MoveChildWindowTopmost(Panel* w)
+    {
+        w->SetD2D1ObjectPriority(++m_topmostWindowPriority.d2d1Object);
+        w->SetUIObjectPriority(--m_topmostWindowPriority.uiObject);
+    }
+
+    void Panel::MoveTopmost()
+    {
+        if (m_parent.expired())
+        {
+            Application::APP->MoveRootWindowTopmost(this);
+        }
+        else // Managed by parent object.
+        {
+            m_parent.lock()->MoveChildWindowTopmost(this);
         }
     }
 

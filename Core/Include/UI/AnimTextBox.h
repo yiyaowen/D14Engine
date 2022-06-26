@@ -30,7 +30,7 @@ namespace d14engine::ui
         float bottomLineUniformSpeedSecs = 0.1f;
 
     protected:
-        D2D1_COLOR_F m_staticBottomLineColor;
+        D2D1_COLOR_F m_staticBottomLineColor = {};
 
         float m_currBottomLineLength = 0.0f;
 
@@ -49,8 +49,8 @@ namespace d14engine::ui
 
         bool OnLoseFocusHelper() override;
 
-        bool OnMouseEnterHelper(MouseEnterEvent& e) override;
+        bool OnMouseEnterHelper(MouseMoveEvent& e) override;
 
-        bool OnMouseLeaveHelper(MouseLeaveEvent& e) override;
+        bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
     };
 }

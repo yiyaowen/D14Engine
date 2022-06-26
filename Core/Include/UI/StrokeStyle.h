@@ -11,9 +11,9 @@ namespace d14engine::ui
             D2D1_COLOR_F strokeColor = (D2D1::ColorF)D2D1::ColorF::Black,
             float strokeColorOpaque = 1.0f);
 
-        float strokeWidth;
+        float strokeWidth = {};
 
-        D2D1_COLOR_F strokeColor;
-        float strokeOpacity;
+        D2D1_COLOR_F strokeColor = {};
+        float strokeOpacity = {};
     };
 }

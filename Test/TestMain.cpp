@@ -1,4 +1,6 @@
 ﻿#include "Precompile.h"
+#include "RuntimeError.h"
+using namespace d14engine;
 
 #include "Renderer/Camera.h"
 #include "Renderer/Renderer.h"
@@ -8,6 +10,7 @@ using namespace d14engine::renderer;
 #include "UI/Application.h"
 #include "UI/BitmapUtils.h"
 #include "UI/Button.h"
+#include "UI/CheckBox.h"
 #include "UI/ConstraintLayout.h"
 #include "UI/ElevatedButton.h"
 #include "UI/FilledButton.h"
@@ -18,8 +21,6 @@ using namespace d14engine::renderer;
 #include "UI/TabGroup.h"
 #include "UI/Window.h"
 using namespace d14engine::ui;
-
-using namespace d14engine;
 
 int wmain(int argc, wchar_t* argv[])
 {
@@ -120,6 +121,7 @@ int wmain(int argc, wchar_t* argv[])
 
             GridLayout::GeometryInfo sideGeoInfo = {};
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 0, 1 };
             sideGeoInfo.axis.y = { 0, 1 };
 
@@ -135,6 +137,7 @@ int wmain(int argc, wchar_t* argv[])
                 }
             };
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 1, 3 };
             sideGeoInfo.axis.y = { 0, 1 };
 
@@ -144,6 +147,7 @@ int wmain(int argc, wchar_t* argv[])
 
             auto b = MakeUIObject<Button>(L"编辑", D2D1_RECT_F{}, 5.0f);
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 0, 2 };
             sideGeoInfo.axis.y = { 1, 1 };
 
@@ -151,6 +155,7 @@ int wmain(int argc, wchar_t* argv[])
 
             auto ob = MakeUIObject<OutlinedButton>(L"编辑", D2D1_RECT_F{}, 5.0f);
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 2, 2 };
             sideGeoInfo.axis.y = { 1, 1 };
 
@@ -158,6 +163,7 @@ int wmain(int argc, wchar_t* argv[])
 
             auto fb = MakeUIObject<FilledButton>(L"编辑", D2D1_RECT_F{}, 5.0f);
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 0, 2 };
             sideGeoInfo.axis.y = { 2, 1 };
 
@@ -165,6 +171,7 @@ int wmain(int argc, wchar_t* argv[])
 
             auto eb = MakeUIObject<ElevatedButton>(L"编辑", D2D1_RECT_F{}, 5.0f);
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 2, 2 };
             sideGeoInfo.axis.y = { 2, 1 };
 
@@ -172,22 +179,21 @@ int wmain(int argc, wchar_t* argv[])
 
             auto darkModeLabel = MakeUIObject<Label>(L"暗黑模式", D2D1_RECT_F{});
 
+            sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 0, 2 };
             sideGeoInfo.axis.y = { 3, 1 };
 
             sideLayout->AddElement(darkModeLabel, sideGeoInfo);
 
             auto oos = MakeUIObject<OnOffSwitch>();
-            {
-                auto originValue = sideGeoInfo.isFixedSize;
-                sideGeoInfo.isFixedSize = true;
-                sideGeoInfo.axis.x = { 2, 1 };
-                sideGeoInfo.axis.y = { 3, 1 };
 
-                sideLayout->AddElement(oos, sideGeoInfo);
-                sideGeoInfo.isFixedSize = originValue;
-            }
-            oos->f_onStateChangeAfter = [&](OnOffSwitch* oos, OnOffSwitch::Event& e)
+            sideGeoInfo.isFixedSize = true;
+            sideGeoInfo.axis.x = { 2, 1 };
+            sideGeoInfo.axis.y = { 3, 1 };
+
+            sideLayout->AddElement(oos, sideGeoInfo);
+
+            oos->f_onStateChangeAfter = [&](OnOffSwitch::Type* oos, OnOffSwitch::Event& e)
             {
                 if (e.SwitchOff())
                 {
@@ -200,6 +206,42 @@ int wmain(int argc, wchar_t* argv[])
                     Application::APP->MainRenderer()->sceneColor = { 0.15f, 0.15f, 0.15f, 1.0f };
                 }
             };
+
+            auto dscb = MakeUIObject<CheckBox>();
+
+            sideGeoInfo.isFixedSize = true;
+            sideGeoInfo.axis.x = { 0, 1 };
+            sideGeoInfo.axis.y = { 4, 1 };
+
+            sideLayout->AddElement(dscb, sideGeoInfo);
+
+            auto twoStateLabel = MakeUIObject<Label>(L"2-state check box", D2D1_RECT_F{});
+
+            twoStateLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
+
+            sideGeoInfo.isFixedSize = false;
+            sideGeoInfo.axis.x = { 1, 3 };
+            sideGeoInfo.axis.y = { 4, 1 };
+
+            sideLayout->AddElement(twoStateLabel, sideGeoInfo);
+
+            auto tscb = MakeUIObject<CheckBox>(true);
+
+            sideGeoInfo.isFixedSize = true;
+            sideGeoInfo.axis.x = { 0, 1 };
+            sideGeoInfo.axis.y = { 5, 1 };
+
+            sideLayout->AddElement(tscb, sideGeoInfo);
+
+            auto threeStateLabel = MakeUIObject<Label>(L"3-state check box", D2D1_RECT_F{});
+
+            threeStateLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
+
+            sideGeoInfo.isFixedSize = false;
+            sideGeoInfo.axis.x = { 1, 3 };
+            sideGeoInfo.axis.y = { 5, 1 };
+
+            sideLayout->AddElement(threeStateLabel, sideGeoInfo);
         });
     }
     catch (RuntimeError& e)

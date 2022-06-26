@@ -63,10 +63,8 @@ namespace d14engine::ui
         // This field always points to the current focused UI object. Only focusable UI object could be focused.
         // e.g. suppose the event is delivered as A --> B --> C, where A, C is not focusable and B is focusable:
         // For A, focused keeps nullptr; for B, focused changes to B; for C, focused remains B as C is not focusable.
-        WeakPtr<Panel> focused;
+        WeakPtr<Panel> focused = {};
     };
-
-    struct MouseEnterEvent : MouseEvent { };
 
     struct MouseMoveEvent : MouseEvent
     {
@@ -88,8 +86,6 @@ namespace d14engine::ui
 
         CursorPoint lastCursorPoint = {};
     };
-
-    struct MouseLeaveEvent : MouseEvent { };
 
     struct MouseWheelEvent : MouseEvent
     {

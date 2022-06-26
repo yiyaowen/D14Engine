@@ -13,14 +13,14 @@ namespace d14engine::ui
             D2D1_COLOR_F shadowColor = (D2D1::ColorF)D2D1::ColorF::Gray,
             D2D1_SHADOW_OPTIMIZATION shadowOptimization = D2D1_SHADOW_OPTIMIZATION_BALANCED);
 
-        float shadowStandardDeviation;
+        float shadowStandardDeviation = {};
 
-        D2D1_COLOR_F shadowColor;
+        D2D1_COLOR_F shadowColor = {};
         float shadowOpacity = 1.0f;
 
-        D2D1_SHADOW_OPTIMIZATION shadowOptimization;
+        D2D1_SHADOW_OPTIMIZATION shadowOptimization = {};
 
-        ComPtr<ID2D1Bitmap1> shadowBitmap;
+        ComPtr<ID2D1Bitmap1> shadowBitmap = {};
 
         void LoadShadowBitmap(UINT width, UINT height);
 

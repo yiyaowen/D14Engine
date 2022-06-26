@@ -33,9 +33,9 @@ namespace d14engine::ui
             float vertSpacing = 8.0f);
 
     protected:
-        size_t m_horzCellCount, m_vertCellCount;
+        size_t m_horzCellCount = {}, m_vertCellCount = {};
 
-        float m_horzSpacing, m_vertSpacing;
+        float m_horzSpacing = {}, m_vertSpacing = {};
 
         void UpdateElement(ElementGeometryInfoMap::iterator& elemItor) override;
 

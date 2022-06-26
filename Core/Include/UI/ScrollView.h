@@ -2,9 +2,8 @@
 
 #include "Precompile.h"
 
-#include "ResizablePanel.h"
-
 #include "MaskStyle.h"
+#include "ResizablePanel.h"
 #include "SolidStyle.h"
 #include "StrokeStyle.h"
 
@@ -26,12 +25,13 @@ namespace d14engine::ui
 
 		struct ScrollBarAppearance
 		{
-			float internalSize = 0.0f;
-			float roundRadius = 0.0f;
-			float externalOffset = 0.0f;
-			D2D1_COLOR_F color = (D2D1::ColorF)D2D1::ColorF::Black;
+			float internalSize = {};
+			float roundRadius = {};
+			float externalOffset = {};
+
+			D2D1_COLOR_F color = {};
 		}
-		scrollBarAppearances[(size_t)ScrollBarState::Count];
+		scrollBarAppearances[(size_t)ScrollBarState::Count] = {};
 
 		const D2D1_POINT_2F& ViewportOffset();
 		void SetViewportOffset(const D2D1_POINT_2F& absolute);
@@ -41,7 +41,7 @@ namespace d14engine::ui
 		void SetViewportOffsetPercentage(const D2D1_POINT_2F& relative);
 
 	protected:
-		SharedPtr<Panel> m_content;
+		SharedPtr<Panel> m_content = {};
 
 		// Store mouse-button-down point's offset in self-coordinate.
 		// These fields will be used to update viewport offset later.
@@ -74,7 +74,7 @@ namespace d14engine::ui
 
 		bool OnMouseMoveHelper(MouseMoveEvent& e) override;
 
-		bool OnMouseLeaveHelper(MouseLeaveEvent& e) override;
+		bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
 
 		bool OnMouseWheelHelper(MouseWheelEvent& e) override;
 	};

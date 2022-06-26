@@ -1,11 +1,10 @@
 ﻿#pragma once
 
 #include "Precompile.h"
-#include "RuntimeError.h"
 
 namespace d14engine::renderer
 {
-    struct GpuBuffer { ComPtr<ID3D12Resource> resource; };
+    struct GpuBuffer { ComPtr<ID3D12Resource> resource = {}; };
 
     // Maintain a resource buffer with DEFAULT type (static).
     // Pros: optimized for GPU, working at the best performance.
@@ -14,7 +13,7 @@ namespace d14engine::renderer
     {
         // Bridge between CPU data and GPU buffer, used to upload resources.
         // This buffer should be of the same size and layout with target buffer.
-        ComPtr<ID3D12Resource> intermidiate;
+        ComPtr<ID3D12Resource> intermidiate = {};
 
         // This ctor only create the buffer and its intermidiate peer (no init).
         // You should initialize the buffer via intermidiate peer later manually.
@@ -29,10 +28,10 @@ namespace d14engine::renderer
     struct UploadBuffer : GpuBuffer
     {
         // Total element count in buffer.
-        UINT elemCount;
+        UINT elemCount = {};
 
         // Byte size of single element in buffer.
-        UINT64 elemByteSize;
+        UINT64 elemByteSize = {};
 
         // Where in memory the buffer is mapped to.
         // Use BYTE* to be compatible with DirectX.

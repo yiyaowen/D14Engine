@@ -123,6 +123,9 @@
     <ClCompile Include="Core\UI\TabGroup.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Core\UI\CheckBox.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\Precompile.h">
@@ -255,6 +258,15 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Core\Include\UI\TabGroup.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\CheckBox.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\StatefulObject.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Include\UI\TextInputObject.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

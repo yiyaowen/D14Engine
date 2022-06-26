@@ -35,6 +35,26 @@ namespace d14engine::renderer
         return { point.x + offset.x, point.y + offset.y };
     }
 
+    D2D1_POINT_2F MathUtils::OverrideX(const D2D1_POINT_2F& point, float value)
+    {
+        return { value, point.y };
+    }
+
+    D2D1_POINT_2F MathUtils::OverrideY(const D2D1_POINT_2F& point, float value)
+    {
+        return { point.x, value };
+    }
+
+    D2D1_POINT_2F MathUtils::IncreaseX(const D2D1_POINT_2F& point, float value)
+    {
+        return { point.x + value, point.y };
+    }
+
+    D2D1_POINT_2F MathUtils::IncreaseY(const D2D1_POINT_2F& point, float value)
+    {
+        return { point.x, point.y + value };
+    }
+
     D2D1_RECT_F MathUtils::Stretch(const D2D1_RECT_F& rect, const D2D1_POINT_2F& delta)
     {
         return { rect.left - delta.x, rect.top - delta.y, rect.right + delta.x, rect.bottom + delta.y };

@@ -3,13 +3,16 @@
 #include "UI/Window.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/Application.h"
+#include "UI/TabGroup.h"
 
 namespace d14engine::ui
 {
     ComPtr<ID2D1LinearGradientBrush>
-        Window::g_titleBarPanelBrush,
-        Window::g_decorativeBarBrush;
+        Window::g_titleBarPanelBrush = {},
+        Window::g_decorativeBarBrush = {};
 
     void Window::LoadCommonResources()
     {
@@ -54,36 +57,19 @@ namespace d14engine::ui
         m_takeOverChildrenDrawing = true;
 
         // Create title bar text label.
+        m_title = MakeUIObject<Label>(
+            title, CenterTitleRect(), UIResu::TEXT_FORMATS.at(L"微软雅黑/Light/16"));
+
+        m_title->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
+
+        // Note p is m_title. Also see Panel's OnParentSize for details.
+        m_title->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e)
         {
-            m_title = MakeUIObject<Label>(
-                title, CenterTitleRect(), UIResu::TEXT_FORMATS.at(L"微软雅黑/Light/16"));
-
-            m_title->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
-
-            // Note p is m_title. Also see Panel's OnParentSize for details.
-            m_title->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e)
-            {
-                auto centerRect = CenterTitleRect();
-                p->Resize( // Keep in horizontal center.
-                    centerRect.right - centerRect.left,
-                    centerRect.bottom - centerRect.top);
-            };
-        }
-        // Create close button text icon.
-        {
-            m_closeX = MakeUIObject<Label>(
-                L"x", RelativeCloseButtonRect(), UIResu::TEXT_FORMATS.at(L"微软雅黑/Regular/16"));
-
-            // FIXME: why not CENTER? The 'x' needs to be placed in the center of the the button;
-            // however, it only looks correct when we set the alignment to FAR instead of CENTER.
-            m_closeX->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_FAR;
-
-            // Note p is m_closeX. Also see Panel's OnParentSize for details.
-            m_closeX->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e)
-            {
-                p->Move(e.size.width - 60.0f, 0.0f);
-            };
-        }
+            auto centerRect = CenterTitleRect();
+            p->Resize( // Keep in horizontal center.
+                      centerRect.right - centerRect.left,
+                      centerRect.bottom - centerRect.top);
+        };
     }
 
     void Window::OnInitializeFinish()
@@ -91,7 +77,6 @@ namespace d14engine::ui
         ResizablePanel::OnInitializeFinish();
 
         m_title->SetParent(shared_from_this());
-        m_closeX->SetParent(shared_from_this());
     }
 
     void Window::OnMinimize()
@@ -201,7 +186,7 @@ namespace d14engine::ui
     {
         // Magic Number - the minimize button is 124.0f from title bar right,
         // and the title text is going to be placed in the horizontal center.
-        return { 124.0f, 0.0f, std::max(Width() - 124.0f, 0.0f), 32.0f };
+        return { 124.0f, 0.0f, std::max(Width() - 124.0f, 124.0f), 32.0f };
     }
 
     D2D1_RECT_F Window::DecorativeBarRect()
@@ -226,10 +211,10 @@ namespace d14engine::ui
         };
     }
 
-    D2D1_RECT_F Window::RelativeCloseButtonRect()
+    D2D1_RECT_F Window::CloseIconRect()
     {
-        float width = Width();
-        return { width - 60.0f, 0.0f, width - 20.0f, 24.0f };
+        auto cbr = CloseButtonRect();
+        return { cbr.left + 15.0f, cbr.top + 7.0f, cbr.right - 15.0f, cbr.bottom - 7.0f };
     }
 
     D2D1_RECT_F Window::MaximizeButtonRect()
@@ -248,7 +233,7 @@ namespace d14engine::ui
         auto mbr = MaximizeButtonRect();
         // Since the whole stroke should be drawn inside the boundary,
         // we simply shrink the rect with 1px to simulate this effects.
-        return { mbr.left + 11.0f, mbr.top + 7.0f, mbr.left + 21.0f, mbr.top + 17.0f };
+        return { mbr.left + 11.0f, mbr.top + 7.0f, mbr.right - 11.0f, mbr.bottom - 7.0f };
     }
 
     D2D1_RECT_F Window::MinimizeButtonRect()
@@ -265,59 +250,241 @@ namespace d14engine::ui
     D2D1_RECT_F Window::MinimizeIconRect()
     {
         auto mbr = MinimizeButtonRect();
-        return { mbr.left + 10.0f, mbr.top + 14.0f, mbr.left + 22.0f, mbr.top + 16.0f };
+        return { mbr.left + 10.0f, mbr.top + 14.0f, mbr.right - 10.0f, mbr.bottom - 8.0f };
     }
 
-    void Window::Set3BrothersButtonBrushState(bool isHover, bool isDown)
+    Window::ThreeBrosState Window::GetMinMaxBroState(bool isHover, bool isDown)
     {
-        auto index = ThreeBrosState::Idle; // Idle
-        if (isHover) index = ThreeBrosState::Hover;
-        if (isDown) index = ThreeBrosState::Down;
+        if (isDown) return ThreeBrosState::Down;
+        else if (isHover) return ThreeBrosState::Hover;
+        else return ThreeBrosState::Idle;
+    }
 
-        auto& setting = threeBrosAppearances[(size_t)index];
+    Window::ThreeBrosState Window::GetCloseXBroState(bool isHover, bool isDown)
+    {
+        if (isDown) return ThreeBrosState::CloseDown;
+        else if (isHover) return ThreeBrosState::CloseHover;
+        else return ThreeBrosState::CloseIdle;
+    }
+
+    void Window::Set3BrothersButtonBrushState(ThreeBrosState state)
+    {
+        auto& setting = threeBrosAppearances[(size_t)state];
 
         UIResu::SOLID_COLOR_BRUSH->SetColor(setting.buttonColor);
         UIResu::SOLID_COLOR_BRUSH->SetOpacity(setting.buttonOpacity);
     }
 
-    void Window::Set3BrothersIconBrushState(bool isHover, bool isDown)
+    void Window::Set3BrothersIconBrushState(ThreeBrosState state)
     {
-        auto index = ThreeBrosState::Idle; // Idle
-        if (isHover) index = ThreeBrosState::Hover;
-        if (isDown) index = ThreeBrosState::Down;
-
-        auto& setting = threeBrosAppearances[(size_t)index];
+        auto& setting = threeBrosAppearances[(size_t)state];
 
         UIResu::SOLID_COLOR_BRUSH->SetColor(setting.iconColor);
         UIResu::SOLID_COLOR_BRUSH->SetOpacity(setting.iconOpacity);
+    }
+
+    SharedPtr<Panel> Window::CenterUIObject()
+    {
+        return m_centerUIObject.lock();
+    }
+
+    void Window::SetCenterUIObject(ShrdPtrParam<Panel> uiobj)
+    {
+        if (uiobj != nullptr)
+        {
+            AddUIObject(uiobj);
+            m_centerUIObject = uiobj;
+
+            uiobj->f_onParentSizeAfter = [&](Panel* p, SizeEvent& e)
+            {
+                auto parent = p->Parent();
+                if (!parent.expired())
+                {
+                    auto wptr = std::static_pointer_cast<Window>(parent.lock());
+                    p->Resize(wptr->Width(), wptr->ClientAreaHeight());
+                }
+            };
+            uiobj->Transform(0.0f, Window::NonClientAreaHeight(), Width(), ClientAreaHeight());
+        }
+        else if (!m_centerUIObject.expired())
+        {
+            RemoveUIObject(m_centerUIObject.lock());
+            m_centerUIObject.reset();
+        }
+    }
+
+    void Window::RegisterTabGroup(WeakPtrParam<TabGroup> tg)
+    {
+        m_registeredTabGroups.insert(tg);
+    }
+
+    void Window::UnregisterTabGroup(WeakPtrParam<TabGroup> tg)
+    {
+        m_registeredTabGroups.erase(tg);
+    }
+
+    void Window::HandleMouseButtonForRegisteredTabGroups(MouseButtonEvent& e)
+    {
+        for (auto tgItor = m_registeredTabGroups.begin(); tgItor != m_registeredTabGroups.end(); )
+        {
+            if (!tgItor->expired())
+            {
+                auto tg = tgItor->lock();
+
+                // Update tab-group's associated-window field.
+                if (m_isDragTitleBar)
+                {
+                    tg->temporaryAssociatedWindow = std::static_pointer_cast<Window>(shared_from_this());
+                }
+                else tg->temporaryAssociatedWindow.reset();
+
+                tgItor++; // Remove expired elements by the way.
+            }
+            else tgItor = m_registeredTabGroups.erase(tgItor);
+        }
+        if (e.status.LeftUp())
+        {
+            // Demote this window to tab-group's new page.
+            if (!temporaryAssociatedTabGroup.expired())
+            {
+                auto tg = temporaryAssociatedTabGroup.lock();
+
+                UnregisterDrawObjects();
+                UnregisterApplicationEvents();
+
+                tg->AppendPage({ MakeUIObject<Label>(Title(), D2D1_RECT_F{}), CenterUIObject() });
+                tg->SelectPage(tg->AvailablePageCount() - 1); // Show demoted page immediately.
+            }
+        }
+    }
+
+    void Window::HandleMouseMoveForRegisteredTabGroups(MouseMoveEvent& e)
+    {
+        auto& p = e.cursorPoint;
+
+        temporaryAssociatedTabGroup.reset();
+        if (!m_isDragTitleBar) return;
+
+        for (auto tgItor = m_registeredTabGroups.begin(); tgItor != m_registeredTabGroups.end(); )
+        {
+            if (!tgItor->expired())
+            {
+                auto tg = tgItor->lock();
+
+                // Check whether is dragging above any tab-group.
+                auto tgPos = tg->AbsolutePosition();
+                D2D1_RECT_F tgRect =
+                {
+                    tgPos.x,
+                    tgPos.y - tg->tabBarExtendedHeight,
+                    tgPos.x + tg->Width(),
+                    tgPos.y
+                };
+                if (Mathu::IsInside(p, tgRect))
+                {
+                    temporaryAssociatedTabGroup = tg;
+                }
+                tgItor++; // Remove expired elements by the way.
+            }
+            else tgItor = m_registeredTabGroups.erase(tgItor);
+        }
     }
 
     void Window::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
     {
         ResizablePanel::OnRendererDrawD2D1LayerHelper(rndr);
 
-        // Shape of Shadow
-        BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
+        // The shadow will be hiden temporarily when drag above any registered tab-group.
+        if (temporaryAssociatedTabGroup.expired())
         {
-            // The color of shadow canvas can be designated casually,
-            // where alpha channel will decide the shape of shadow.
-            rndr->d2d1DeviceContext->Clear((D2D1::ColorF)D2D1::ColorF::Black);
+            // Shape of Shadow
+            BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
+            {
+                // The color of shadow canvas can be designated casually,
+                // where alpha channel will decide the shape of shadow.
+                rndr->d2d1DeviceContext->Clear((D2D1::ColorF)D2D1::ColorF::Black);
+            }
+            EndDrawOnShadow(rndr->d2d1DeviceContext.Get());
         }
-        EndDrawOnShadow(rndr->d2d1DeviceContext.Get());
-
-        // Children on Mask
+        // Content on Mask
         BeginDrawOnMask(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
         {
-            auto closeIndex = ThreeBrosState::CloseIdle; // Idle
-            if (m_isCloseHover) closeIndex = ThreeBrosState::CloseHover;
-            if (m_isCloseDown) closeIndex = ThreeBrosState::CloseDown;
-           
-            auto& setting = threeBrosAppearances[(size_t)closeIndex];
+            // Background
+            {
+                UIResu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
+                UIResu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
 
-            // Adjust the appearance of the close button icon dynamically.
-            m_closeX->foregroundColor = setting.iconColor;
-            m_closeX->foregroundOpacity = setting.iconOpacity;
+                ResizablePanel::DrawBackground(rndr);
+            }
+            // Title Bar
+            {
+                // Panel
+                auto tpr = TitlePanelRect();
 
+                g_titleBarPanelBrush->SetStartPoint({ tpr.left, tpr.bottom });
+                g_titleBarPanelBrush->SetEndPoint({ tpr.left, tpr.top });
+
+                rndr->d2d1DeviceContext->FillRectangle(tpr, g_titleBarPanelBrush.Get());
+
+                // Title text had been drawn as child.
+
+                // Decorative Bar
+                auto dbr = DecorativeBarRect();
+
+                g_decorativeBarBrush->SetStartPoint({ dbr.left, dbr.top });
+                g_decorativeBarBrush->SetEndPoint({ dbr.right, dbr.top });
+
+                rndr->d2d1DeviceContext->FillRectangle(dbr, g_decorativeBarBrush.Get());
+            }
+            // 3 Brothers
+            {
+                // Close Button
+                {
+                    auto state = GetCloseXBroState(m_isCloseHover, m_isCloseDown);
+
+                    Set3BrothersButtonBrushState(state);
+                    rndr->d2d1DeviceContext->FillRectangle(CloseButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+
+                    Set3BrothersIconBrushState(state);
+
+                    auto iconRect = CloseIconRect();
+
+                    // Main Diagonal
+                    rndr->d2d1DeviceContext->DrawLine(
+                        { iconRect.left, iconRect.top },
+                        { iconRect.right, iconRect.bottom },
+                        UIResu::SOLID_COLOR_BRUSH.Get(),
+                        CloseXStrokeWidth());
+
+                    // Back Diagonal
+                    rndr->d2d1DeviceContext->DrawLine(
+                        { iconRect.right, iconRect.top },
+                        { iconRect.left, iconRect.bottom },
+                        UIResu::SOLID_COLOR_BRUSH.Get(),
+                        CloseXStrokeWidth());
+                }
+                // Maximize Button
+                {
+                    auto state = GetMinMaxBroState(m_isMaximizeHover, m_isMaximizeDown);
+
+                    Set3BrothersButtonBrushState(state);
+                    rndr->d2d1DeviceContext->FillRectangle(MaximizeButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+
+                    Set3BrothersIconBrushState(state);
+                    rndr->d2d1DeviceContext->DrawRectangle(MaximizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get(), 2.0f);
+                }
+                // Minimize Button
+                {
+                    auto state = GetMinMaxBroState(m_isMinimizeHover, m_isMinimizeDown);
+
+                    Set3BrothersButtonBrushState(state);
+                    rndr->d2d1DeviceContext->FillRectangle(MinimizeButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+
+                    Set3BrothersIconBrushState(state);
+                    rndr->d2d1DeviceContext->FillRectangle(MinimizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get());
+                }
+            }
+            // Children
             Panel::DrawChildrenObjects(rndr);
         }
         EndDrawOnMask(rndr->d2d1DeviceContext.Get());
@@ -326,86 +493,27 @@ namespace d14engine::ui
     void Window::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         // Shadow
+        if (temporaryAssociatedTabGroup.expired())
         {
             ConfigShadowEffectInput(UIResu::SHADOW_EFFECT.Get());
 
             rndr->d2d1DeviceContext->DrawImage(UIResu::SHADOW_EFFECT.Get(), AbsolutePosition());
         }
-        // Background
+        // Content
         {
-            UIResu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-            UIResu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
-
-            ResizablePanel::DrawBackground(rndr);
-        }
-        // Title Bar
-        {
-            // Panel
-            auto tpr = TitlePanelRect();
-
-            g_titleBarPanelBrush->SetStartPoint({ tpr.left, tpr.bottom });
-            g_titleBarPanelBrush->SetEndPoint({ tpr.left, tpr.top });
-
-            rndr->d2d1DeviceContext->FillRectangle(tpr, g_titleBarPanelBrush.Get());
-
-            // Title text had been drawn as child.
-
-            // Decorative Bar
-            auto dbr = DecorativeBarRect();
-
-            g_decorativeBarBrush->SetStartPoint({ dbr.left, dbr.top });
-            g_decorativeBarBrush->SetEndPoint({ dbr.right, dbr.top });
-
-            rndr->d2d1DeviceContext->FillRectangle(dbr, g_decorativeBarBrush.Get());
-        }
-        // 3 Brothers
-        {
-            // Close Button
-            {
-                float opacity = 0.0f; // Idle
-                if (m_isCloseHover) opacity = 1.0f;
-                if (m_isCloseDown) opacity = 0.8f;
-
-                UIResu::SOLID_COLOR_BRUSH->SetColor({ 0.78f, 0.12f, 0.2f, 1.0f });
-                UIResu::SOLID_COLOR_BRUSH->SetOpacity(opacity);
-
-                rndr->d2d1DeviceContext->FillRectangle(CloseButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
-
-                // Close icon had been drawn as child.
-            }
-            // Maximize Button
-            {
-                auto mbr = MaximizeButtonRect();
-
-                Set3BrothersButtonBrushState(m_isMaximizeHover, m_isMaximizeDown);
-                rndr->d2d1DeviceContext->FillRectangle(mbr, UIResu::SOLID_COLOR_BRUSH.Get());
-
-                Set3BrothersIconBrushState(m_isMaximizeHover, m_isMaximizeDown);
-                rndr->d2d1DeviceContext->DrawRectangle(MaximizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get(), 2.0f);
-            }
-            // Minimize Button
-            {
-                Set3BrothersButtonBrushState(m_isMinimizeHover, m_isMinimizeDown);
-                rndr->d2d1DeviceContext->FillRectangle(MinimizeButtonRect(), UIResu::SOLID_COLOR_BRUSH.Get());
-
-                Set3BrothersIconBrushState(m_isMinimizeHover, m_isMinimizeDown);
-                rndr->d2d1DeviceContext->FillRectangle(MinimizeIconRect(), UIResu::SOLID_COLOR_BRUSH.Get());
-            }
-        }
-        // Masked Children
-        {
-            rndr->d2d1DeviceContext->DrawBitmap(maskBitmap.Get(), m_absoluteRect);
+            rndr->d2d1DeviceContext->DrawBitmap(maskBitmap.Get(), m_absoluteRect,
+                temporaryAssociatedTabGroup.expired() ? maskOpacity : maskOpacityWhenDragAboveTabGroup);
         }
     }
 
     float Window::MinimalWidth()
     {
-        return 144.0f;
+        return NonClientAreaMinimalWidth();
     }
 
     float Window::MinimalHeight()
     {
-        return 40.0f;
+        return NonClientAreaHeight();
     }
 
     void Window::OnSizeHelper(SizeEvent& e)
@@ -587,6 +695,12 @@ namespace d14engine::ui
 
     bool Window::OnMouseButtonHelper(MouseButtonEvent& e)
     {
+        if (e.status.LeftDown() || e.status.MiddleDown() || e.status.RightDown())
+        {
+            // We decide Window should be a special top-level UI object,
+            // which means it will show and respond at top when clicked.
+            MoveTopmost();
+        }
         auto& p = e.cursorPoint;
 
         if (e.status.LeftDown())
@@ -606,8 +720,8 @@ namespace d14engine::ui
                 if (m_isDragTitleBar = Mathu::IsInside(p, TitlePanelRect()))
                 {
                     m_is3BrothersEnabled = false;
-
                     m_dragPoint = AbsoluteToSelfCoord(p);
+
                     // In case the mouse dashes out of the boundary.
                     PinApplicationEvents();
 
@@ -643,6 +757,8 @@ namespace d14engine::ui
                 Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::Arrow);
             }
         }
+        HandleMouseButtonForRegisteredTabGroups(e);
+
         return ResizablePanel::OnMouseButtonHelper(e);
     }
 
@@ -679,9 +795,9 @@ namespace d14engine::ui
         }
         else m_isCloseHover = m_isMaximizeHover = m_isMinimizeHover = false;
 
-        // Trigger movement if drag title bar.
         if (m_isDragTitleBar)
         {
+            // Trigger movement if drag title bar.
             m_skipDeliverNextMouseMoveEventToChildren = true;
 
             auto relative = AbsoluteToRelative(p);
@@ -689,6 +805,8 @@ namespace d14engine::ui
 
             Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::AllSize);
         }
+        HandleMouseMoveForRegisteredTabGroups(e);
+
         return ResizablePanel::OnMouseMoveHelper(e);
     }
 }

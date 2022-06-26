@@ -3,6 +3,8 @@
 #include "UI/TabGroup.h"
 
 #include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UI/Application.h"
 #include "UI/BitmapUtils.h"
 #include "UI/UIResourceUtils.h"
@@ -27,6 +29,19 @@ namespace d14engine::ui
         LoadActiveCardShadowBitmap();
     }
 
+    TabGroup::Page* TabGroup::FindPage(size_t index)
+    {
+        return (index >= 0 && index < m_pages.size()) ? &m_pages[index] : nullptr;
+    }
+
+    TabGroup::Page* TabGroup::FindPage(WstrParam title)
+    {
+        auto pageItor = std::find_if(m_pages.begin(), m_pages.end(),
+            [&](const Page& elem) { return elem.title->Text() == title; });
+
+        return (pageItor != m_pages.end()) ? &(*pageItor) : nullptr;
+    }
+
     void TabGroup::SelectPage(size_t index)
     {
         if (index >= 0 && index < m_pages.size())
@@ -39,18 +54,14 @@ namespace d14engine::ui
             m_pages[m_currActivePageIndex = index].content->SetEnabled(true);
         }
         else m_currActivePageIndex = SIZE_T_MAX;
-
-        UpdateTitleAppearanceForAllPages();
     }
 
     void TabGroup::SelectPage(WstrParam title)
     {
-        SelectPage(std::find_if(m_pages.begin(), m_pages.end(),
-            [&](const Page& elem)
-            {
-                return elem.title->Text() == title;
-            })
-            - m_pages.begin());
+        auto pageItor = std::find_if(m_pages.begin(), m_pages.end(),
+            [&](const Page& elem) { return elem.title->Text() == title; });
+
+        SelectPage(pageItor - m_pages.begin());
     }
 
     void TabGroup::InsertPage(const Page& page, size_t index)
@@ -69,6 +80,8 @@ namespace d14engine::ui
             // Note there's no need to SetVisible(false) in practice,
             // since only current active page's content will be drawn.
             page.content->SetEnabled(false);
+            // Config as center UI object immediately after inserted.
+            page.content->Transform(0.0f, 0.0f, Width(), Height());
 
             if (m_currActivePageIndex >= 0 && m_currActivePageIndex < m_pages.size())
             {
@@ -81,7 +94,6 @@ namespace d14engine::ui
             m_tabCloseXHoverStates.insert(m_tabCloseXHoverStates.begin() + index, false);
             m_tabCloseXDownStates.insert(m_tabCloseXDownStates.begin() + index, false);
         }
-        UpdateTitleAppearanceForAllPages();
     }
 
     void TabGroup::AppendPage(const Page& page)
@@ -118,7 +130,6 @@ namespace d14engine::ui
             m_tabCloseXHoverStates.erase(m_tabCloseXHoverStates.begin() + index);
             m_tabCloseXDownStates.erase(m_tabCloseXDownStates.begin() + index);
         }
-        UpdateTitleAppearanceForAllPages();
 
         // When click tab's close-x button to remove a page, the card will flicker suddenly,
         // which is caused by delayed updating (doesn't change its appearance immediately).
@@ -134,12 +145,15 @@ namespace d14engine::ui
 
     void TabGroup::RemovePage(WstrParam title)
     {
-        RemovePage(std::find_if(m_pages.begin(), m_pages.end(),
-            [&](const Page& elem)
-            {
-                return elem.title->Text() == title;
-            })
-            - m_pages.begin());
+        auto pageItor = std::find_if(m_pages.begin(), m_pages.end(),
+            [&](const Page& elem) { return elem.title->Text() == title; });
+
+        RemovePage(pageItor - m_pages.begin());
+    }
+
+    size_t TabGroup::AvailablePageCount()
+    {
+        return m_pages.size();
     }
 
     float TabGroup::CardWidth()
@@ -221,6 +235,21 @@ namespace d14engine::ui
         return { cardRect.left, cardRect.top };
     }
 
+    D2D1_RECT_F TabGroup::IconRect(size_t index)
+    {
+        auto& setting = tabAppearances[(size_t)GetTabState(index)];
+
+        auto cardPosition = CardPosition(index);
+
+        D2D1_RECT_F iconRect = {};
+        iconRect.left = cardPosition.x + setting.icon.leftOffset;
+        iconRect.right = iconRect.left + setting.icon.size.width;
+        iconRect.top = cardPosition.y + (setting.card.height - setting.icon.size.height) * 0.5f;
+        iconRect.bottom = iconRect.top + setting.icon.size.height;
+
+        return iconRect;
+    }
+
     D2D1_RECT_F TabGroup::TitleRect(size_t index)
     {
         auto& setting = tabAppearances[(size_t)GetTabState(index)];
@@ -262,7 +291,18 @@ namespace d14engine::ui
             });
     }
 
-    void TabGroup::UpdateTitleAppearance(size_t index)
+    void TabGroup::DrawCardIcon(Renderer* rndr, size_t index)
+    {
+        auto& setting = tabAppearances[(size_t)GetTabState(index)].icon;
+
+        if (setting.bitmap != nullptr)
+        {
+            rndr->d2d1DeviceContext->DrawBitmap(
+                setting.bitmap.Get(), IconRect(index), setting.opacity);
+        }
+    }
+
+    void TabGroup::DrawTitleLabel(Renderer* rndr, size_t index)
     {
         if (index >= 0 && index < m_pages.size())
         {
@@ -287,22 +327,8 @@ namespace d14engine::ui
 
             page.title->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
             page.title->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
-        }
-    }
 
-    void TabGroup::UpdateTitleAppearanceForAllPages()
-    {
-        for (size_t i = 0; i < m_pages.size(); ++i)
-        {
-            UpdateTitleAppearance(i);
-        }
-    }
-
-    void TabGroup::DrawTitleLabel(Renderer* rndr, size_t index)
-    {
-        if (index >= 0 && index < m_pages.size())
-        {
-            m_pages[index].title->OnRendererDrawD2D1Object(rndr);
+            page.title->OnRendererDrawD2D1Object(rndr);
         }
     }
 
@@ -349,6 +375,78 @@ namespace d14engine::ui
             { closeXRect.left, closeXRect.bottom },
             UIResu::SOLID_COLOR_BRUSH.Get(),
             setting.strokeWidth);
+    }
+
+    void TabGroup::TriggerPagePromoteEvent(MouseMoveEvent& e)
+    {
+        if (m_dragCardIndex >= 0 && m_dragCardIndex < m_pages.size())
+        {
+            auto w = PromotePageToWindow(m_dragCardIndex);
+
+            w->MoveTopmost();
+
+            // We decide the window should be able to demote back again.
+            w->RegisterTabGroup(std::static_pointer_cast<TabGroup>(shared_from_this()));
+            w->RegisterDrawObjects();
+            w->RegisterApplicationEvents();
+
+            auto dragPoint = Mathu::IncreaseY(m_dragPoint, tabBarExtendedHeight);
+            // Make sure the cursor is within the window's title panel,
+            // and thus the immediate mouse-button event can trigger dragging.
+            w->Move(e.cursorPoint.x - dragPoint.x, e.cursorPoint.y - dragPoint.y);
+
+            // Continue dragging window if mouse button keep pressed.
+            MouseButtonEvent immediateMouseButton = {};
+            immediateMouseButton.cursorPoint = e.cursorPoint;
+            immediateMouseButton.status = { MouseButtonEvent::Status::Flag::LeftDown };
+
+            w->OnMouseButton(immediateMouseButton);
+        }
+    }
+
+    SharedPtr<Window> TabGroup::PromotePageToWindow(size_t index)
+    {
+        if (index >= 0 && index < m_pages.size())
+        {
+            Page page = m_pages[index];
+            RemovePage(index);
+
+            // Wrap page's content within new window's client area.
+            D2D1_RECT_F initialRect = page.content->AbsoluteRect();
+
+            initialRect.right = initialRect.left + std::max(
+                initialRect.right - initialRect.left, Window::NonClientAreaMinimalWidth());
+
+            initialRect = Mathu::IncreaseTop(initialRect, -Window::NonClientAreaHeight());
+
+            // Create new unregistered window.
+            auto w = MakeUIObject<Window>(page.title->Text(), initialRect);
+
+            // Inherit original size constraints of pgae's content.
+            w->minimalWidth = std::max(MinimalWidth(), Window::NonClientAreaMinimalWidth());
+            w->maximalWidth = MaximalWidth();
+
+            w->minimalHeight = MinimalHeight() + Window::NonClientAreaHeight();
+            w->maximalHeight = MaximalHeight();
+
+            // Set page's content as new window's center UI object.
+            w->SetCenterUIObject(page.content);
+
+            return w;
+        }
+        else return nullptr;
+    }
+
+    bool TabGroup::IsTemporaryWindowDragAbove()
+    {
+        if (!temporaryAssociatedWindow.expired())
+        {
+            auto targetWindow = temporaryAssociatedWindow.lock();
+            auto targetTabGroup = targetWindow->temporaryAssociatedTabGroup.lock();
+
+            return targetTabGroup.get() == this;
+        }
+        else return false;
     }
 
     void TabGroup::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
@@ -535,10 +633,20 @@ namespace d14engine::ui
                             tabSeparatorStyle.strokeWidth);
                     }
                 }
-                // Draw title && close-x for all tabs.
+                // Draw icon, title && close-x for all tabs.
+                DrawCardIcon(rndr, cardIndex);
                 DrawTitleLabel(rndr, cardIndex);
                 DrawCloseXButton(rndr, cardIndex);
             }
+        }
+        // Mask when Below Drag Window
+        if (IsTemporaryWindowDragAbove())
+        {
+            UIResu::SOLID_COLOR_BRUSH->SetColor(maskStyleWhenBelowDragWindow.color);
+            UIResu::SOLID_COLOR_BRUSH->SetOpacity(maskStyleWhenBelowDragWindow.opacity);
+
+            rndr->d2d1DeviceContext->FillRoundedRectangle(
+                { m_absoluteRect, roundRadiusX, roundRadiusY }, UIResu::SOLID_COLOR_BRUSH.Get());
         }
     }
 
@@ -601,6 +709,8 @@ namespace d14engine::ui
                     { 0.9f, 0.9f, 0.9f, 1.0f }, // color
                     1.0f // opacity
                 },
+                // icon appearance
+                tabAppearances[(size_t)TabState::Active].icon,
                 { // title appearance
                     { 80.0f, 20.0f }, // size
                     20.0f, // left offset
@@ -642,6 +752,8 @@ namespace d14engine::ui
                     { 0.9f, 0.9f, 0.9f, 1.0f }, // color
                     1.0f // opacity
                 },
+                // icon appearance
+                tabAppearances[(size_t)TabState::Hover].icon,
                 { // title appearance
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
@@ -683,6 +795,8 @@ namespace d14engine::ui
                     { 0.8f, 0.8f, 0.8f, 1.0f }, // color
                     1.0f // opacity
                 },
+                // icon appearance
+                tabAppearances[(size_t)TabState::Dormant].icon,
                 { // title appearance
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
@@ -716,6 +830,11 @@ namespace d14engine::ui
                     1.0f, // stroke width
                 }
             };
+            maskStyleWhenBelowDragWindow =
+            {
+                { 0.68f, 0.84f, 1.0f, 1.0f }, // color
+                0.5f // opacity
+            };
         }
         else if (themeName == L"Dark")
         {
@@ -739,6 +858,8 @@ namespace d14engine::ui
                     { 0.12f, 0.12f, 0.12f, 1.0f }, // color
                     1.0f // opacity
                 },
+                // icon appearance
+                tabAppearances[(size_t)TabState::Active].icon,
                 { // title appearance
                     { 80.0f, 20.0f }, // size
                     20.0f, // left offset
@@ -754,17 +875,17 @@ namespace d14engine::ui
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         (D2D1::ColorF)D2D1::ColorF::Black, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         { 0.3f, 0.3f, 0.3f, 1.0f }, // background color
                         1.0f, // background opacity
                     },{ // down
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         { 0.4f, 0.4f, 0.4f, 1.0f }, // background color
                         1.0f, // background opacity
@@ -780,6 +901,8 @@ namespace d14engine::ui
                     { 0.12f, 0.12f, 0.12f, 1.0f }, // color
                     1.0f // opacity
                 },
+                // icon appearance
+                tabAppearances[(size_t)TabState::Hover].icon,
                 { // title appearance
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
@@ -795,17 +918,17 @@ namespace d14engine::ui
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         (D2D1::ColorF)D2D1::ColorF::Black, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         { 0.3f, 0.3f, 0.3f, 1.0f }, // background color
                         1.0f, // background opacity
                     },{ // down
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         { 0.4f, 0.4f, 0.4f, 1.0f }, // background color
                         1.0f, // background opacity
@@ -821,6 +944,8 @@ namespace d14engine::ui
                     { 0.25f, 0.25f, 0.25f, 1.0f }, // color
                     1.0f // opacity
                 },
+                // icon appearance
+                tabAppearances[(size_t)TabState::Dormant].icon,
                 { // title appearance
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
@@ -836,23 +961,28 @@ namespace d14engine::ui
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         (D2D1::ColorF)D2D1::ColorF::Black, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         { 0.3f, 0.3f, 0.3f, 1.0f }, // background color
                         1.0f, // background opacity
                     },{ // down
-                        (D2D1::ColorF)D2D1::ColorF::White, // foreground color
+                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
                         1.0f, // foreground opacity
                         { 0.4f, 0.4f, 0.4f, 1.0f }, // background color
                         1.0f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
+            };
+            maskStyleWhenBelowDragWindow =
+            {
+                { 0.15f, 0.31f, 0.47f, 1.0f }, // color
+                0.5f // opacity
             };
         }
     }
@@ -875,8 +1005,9 @@ namespace d14engine::ui
                     {
                         SelectPage(m_currHoverPageIndex);
                     }
+                    m_dragCardIndex = m_currHoverPageIndex;
+                    m_dragPoint = AbsoluteToSelfCoord(p);
                 }
-                m_dragCardIndex = m_currHoverPageIndex;
             }
         }
         else if (e.status.LeftUp())
@@ -889,6 +1020,7 @@ namespace d14engine::ui
                 }
             }
             m_dragCardIndex = SIZE_T_MAX;
+            m_dragPoint = { 0.0f, 0.0f };
         }
         return ResizablePanel::OnMouseButtonHelper(e);
     }
@@ -937,6 +1069,23 @@ namespace d14engine::ui
                 }
             }
         }
+        else // Out of tab bar panel area.
+        {
+            if (e.buttonState.leftPressed)
+            {
+                TriggerPagePromoteEvent(e);
+            }
+            m_dragCardIndex = SIZE_T_MAX;
+        }
         return ResizablePanel::OnMouseMoveHelper(e);
+    }
+
+    bool TabGroup::OnMouseLeaveHelper(MouseMoveEvent& e)
+    {
+        if (e.buttonState.leftPressed)
+        {
+            TriggerPagePromoteEvent(e);
+        }
+        return ResizablePanel::OnMouseLeaveHelper(e);
     }
 }

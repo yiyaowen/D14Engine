@@ -20,8 +20,7 @@ namespace d14engine::ui
 
         wndclass = {};
         wndclass.lpfnWndProc = WndProc;
-        // We will populate the window user data
-        // with the application instance pointer later.
+        // We will populate the window user data with the application instance pointer later.
         wndclass.cbWndExtra = sizeof(this);
         wndclass.hInstance = hInstance;
         wndclass.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
@@ -109,7 +108,9 @@ namespace d14engine::ui
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
-            if (m_animateCount > 0)
+            // Use "else-if" instead of "if". We must empty the message queue between each frame
+            // since there are usually dozens or more messages queued up in a single frame time.
+            else if (m_animateCount > 0)
             {
                 m_renderer->DrawNextFrame();
             }
@@ -225,6 +226,7 @@ namespace d14engine::ui
                     }
                 }
             }
+            m_focusedTextInputObject = std::dynamic_pointer_cast<TextInputObject>(m_focusedUIObject.lock());
         }
     }
 
@@ -232,14 +234,6 @@ namespace d14engine::ui
     {
         m_nextFocusedCandidate = uiobj;
         PostCustomWinMessage(CustomWinMessage::ChangeFocusedUIObject);
-    }
-
-    void Application::ChangeTheme(WstrViewParam themeName)
-    {
-        for (auto& uiobj : m_uiobjects)
-        {
-            uiobj->OnChangeTheme(themeName);
-        }
     }
 
     void Application::UpdateDiffPinnedUIObjects()
@@ -259,6 +253,14 @@ namespace d14engine::ui
         PostCustomWinMessage(CustomWinMessage::UpdateRootDiffPinnedUIObjects);
     }
 
+    void Application::BroadcastInputStringEvent(WstrViewParam content)
+    {
+        if (!m_focusedTextInputObject.expired())
+        {
+            m_focusedTextInputObject.lock()->OnInputString(content);
+        }
+    }
+
     LRESULT CALLBACK Application::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         auto app = (Application*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -272,11 +274,18 @@ namespace d14engine::ui
         }
         case WM_PAINT:
         {
-            if (app->m_animateCount != 0) return 0;
-
-            if (app != nullptr && app->m_renderer != nullptr)
+            if (app != nullptr)
             {
-                app->m_renderer->DrawNextFrame();
+                if (app->m_animateCount != 0)
+                {
+                    // No Begin/End-Paint here, so we must validate the whole window
+                    // manually to prevent system from sending WM_PAINT continuously.
+                    ValidateRect(hwnd, nullptr);
+                }
+                else if (app->m_renderer != nullptr)
+                {
+                    app->m_renderer->DrawNextFrame();
+                }
             }
             return 0;
         }
@@ -360,6 +369,7 @@ namespace d14engine::ui
             {
                 app->FocusUIObject(e.focused);
             }
+            InvalidateRect(hwnd , nullptr, FALSE);
             return 0;
         }
         case WM_MOUSEMOVE:
@@ -385,40 +395,6 @@ namespace d14engine::ui
                     currHitUIObjects.insert(uiobj);
                 }
             }
-            // OnMouseEnter
-            MouseEnterEvent mee = {};
-            mee.cursorPoint = cursorPoint;
-
-            ISortable<Panel>::Foreach(currHitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
-            {
-                // Moved in just now, trigger OnMouseEnter event.
-                if (app->m_hitUIObjects.find(uiobj) == app->m_hitUIObjects.end())
-                {
-                    if (uiobj->appEventFlags.mouse.enter)
-                    {
-                        return uiobj->OnMouseEnter(mee);
-                    }
-                }
-                return false;
-            });
-            // OnMouseLeave
-            MouseLeaveEvent mle = {};
-            mle.cursorPoint = LAST_CURSOR_POINT;
-
-            ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
-            {
-                // Moved out just now, trigger OnMouseLeave event.
-                if (currHitUIObjects.find(uiobj) == currHitUIObjects.end())
-                {
-                    if (uiobj->appEventFlags.mouse.leave)
-                    {
-                        return uiobj->OnMouseLeave(mle);
-                    }
-                }
-                return false;
-            });
-            app->m_hitUIObjects = std::move(currHitUIObjects);
-
             MouseMoveEvent e = {};
             e.cursorPoint = cursorPoint;
 
@@ -432,6 +408,32 @@ namespace d14engine::ui
 
             e.lastCursorPoint = LAST_CURSOR_POINT;
             LAST_CURSOR_POINT = cursorPoint;
+
+            ISortable<Panel>::Foreach(currHitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
+            {
+                // Moved in just now, trigger OnMouseEnter event.
+                if (app->m_hitUIObjects.find(uiobj) == app->m_hitUIObjects.end())
+                {
+                    if (uiobj->appEventFlags.mouse.enter)
+                    {
+                        return uiobj->OnMouseEnter(e);
+                    }
+                }
+                return false;
+            });
+            ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
+            {
+                // Moved out just now, trigger OnMouseLeave event.
+                if (currHitUIObjects.find(uiobj) == currHitUIObjects.end())
+                {
+                    if (uiobj->appEventFlags.mouse.leave)
+                    {
+                        return uiobj->OnMouseLeave(e);
+                    }
+                }
+                return false;
+            });
+            app->m_hitUIObjects = std::move(currHitUIObjects);
 
             // Only broadcast the event to those hit UI objects.
             ISortable<Panel>::Foreach(app->m_hitUIObjects, [&](ShrdPtrParam<Panel> uiobj)
@@ -458,15 +460,18 @@ namespace d14engine::ui
             TRACKMOUSEEVENT tme = {};
             tme.cbSize = sizeof(TRACKMOUSEEVENT);
             tme.dwFlags = TME_LEAVE;
-            tme.hwndTrack = app->m_window;
+            tme.hwndTrack = hwnd;
 
             TrackMouseEvent(&tme);
             app->m_cursor->SetVisible(true);
+
+            InvalidateRect(hwnd, nullptr, FALSE);
             return 0;
         }
         case WM_MOUSELEAVE:
         {
             app->m_cursor->SetVisible(false);
+            InvalidateRect(hwnd, nullptr, FALSE);
             return 0;
         }
         case WM_MOUSEWHEEL:
@@ -515,6 +520,7 @@ namespace d14engine::ui
                 }
                 return false;
             });
+            InvalidateRect(hwnd, nullptr, FALSE);
             return 0;
         }
         case WM_KEYDOWN:
@@ -552,6 +558,60 @@ namespace d14engine::ui
                 }
                 return false;
             });
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        case WM_IME_STARTCOMPOSITION:
+        {
+            if (!app->m_focusedTextInputObject.expired())
+            {
+                auto form = app->m_focusedTextInputObject.lock()->GetCompositionForm();
+                if (form.has_value())
+                {
+                    HIMC himc = ImmGetContext(hwnd);
+                    if (himc)
+                    {
+                        ImmSetCompositionWindow(himc, &form.value());
+                    }
+                    ImmReleaseContext(hwnd, himc);
+                }
+            }
+            return DefWindowProc(hwnd, message, wParam, lParam);
+        }
+        case WM_IME_COMPOSITION:
+        {
+            if (lParam & GCS_RESULTSTR)
+            {
+                HIMC himc = ImmGetContext(hwnd);
+                if (himc)
+                {
+                    auto nSize = ImmGetCompositionString(himc, GCS_RESULTSTR, nullptr, 0);
+                    if (nSize > 0)
+                    {
+                        // Remember to reserve enough space for null-terminated.
+                        auto hLocal = LocalAlloc(LPTR, nSize + sizeof(WCHAR));
+                        if (hLocal)
+                        {
+                            ImmGetCompositionString(himc, GCS_RESULTSTR, hLocal, nSize);
+
+                            app->BroadcastInputStringEvent((WCHAR*)hLocal);
+                            InvalidateRect(hwnd, nullptr, FALSE);
+
+                            LocalFree(hLocal);
+                        }
+                    }
+                }
+                ImmReleaseContext(hwnd, himc);
+
+                // Prevent from receiving WM_CHAR with the result string since it had been handled above.
+                lParam &= ~(GCS_RESULTCLAUSE | GCS_RESULTREADCLAUSE | GCS_RESULTREADSTR | GCS_RESULTSTR);
+            }
+            return DefWindowProc(hwnd, message, wParam, lParam);
+        }
+        case WM_CHAR:
+        {
+            app->BroadcastInputStringEvent({ (WCHAR*)&wParam, 1 });
+            InvalidateRect(hwnd, nullptr, FALSE);
             return 0;
         }
         case (UINT)CustomWinMessage::ChangeFocusedUIObject:
@@ -578,10 +638,34 @@ namespace d14engine::ui
             return 0;
         }
         case WM_DESTROY:
+        {
             PostQuitMessage(0);
             return 0;
         }
-        return DefWindowProc(hwnd, message, wParam, lParam);
+        default: return DefWindowProc(hwnd, message, wParam, lParam);
+        }
+        THROW_ERROR(L"Win32 message process terminates without return value.");
+    }
+
+    const Wstring& Application::CurrentThemeName()
+    {
+        return m_currThemeName;
+    }
+
+    void Application::ChangeTheme(WstrViewParam themeName)
+    {
+        m_currThemeName = themeName;
+
+        for (auto& uiobj : m_uiobjects)
+        {
+            uiobj->OnChangeTheme(themeName);
+        }
+    }
+
+    void Application::MoveRootWindowTopmost(Panel* w)
+    {
+        w->SetD2D1ObjectPriority(++m_topmostWindowPriority.d2d1Object);
+        w->SetUIObjectPriority(--m_topmostWindowPriority.uiObject);
     }
 
     void Application::PostCustomWinMessage(CustomWinMessage message)

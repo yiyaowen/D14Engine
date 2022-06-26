@@ -117,7 +117,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>./Common;./Core/Include;./ThirdParty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -169,6 +169,7 @@
     <ClCompile Include="Core\Renderer\Timer.cpp" />
     <ClCompile Include="Core\UI\AnimationUtils.cpp" />
     <ClCompile Include="Core\UI\AnimTextBox.cpp" />
+    <ClCompile Include="Core\UI\CheckBox.cpp" />
     <ClCompile Include="Core\UI\ConstraintLayout.cpp" />
     <ClCompile Include="Core\UI\GridLayout.cpp" />
     <ClCompile Include="Core\UI\OnOffSwitch.cpp" />
@@ -213,15 +214,18 @@
     <ClInclude Include="Core\Include\Renderer\Timer.h" />
     <ClInclude Include="Core\Include\UI\AnimationUtils.h" />
     <ClInclude Include="Core\Include\UI\AnimTextBox.h" />
+    <ClInclude Include="Core\Include\UI\CheckBox.h" />
     <ClInclude Include="Core\Include\UI\ConstraintLayout.h" />
     <ClInclude Include="Core\Include\UI\GridLayout.h" />
     <ClInclude Include="Core\Include\UI\Layout.h" />
     <ClInclude Include="Core\Include\UI\OnOffSwitch.h" />
     <ClInclude Include="Core\Include\UI\ResizablePanel.h" />
     <ClInclude Include="Core\Include\UI\ScrollView.h" />
+    <ClInclude Include="Core\Include\UI\StatefulObject.h" />
     <ClInclude Include="Core\Include\UI\StrokeStyle.h" />
     <ClInclude Include="Core\Include\UI\TabGroup.h" />
     <ClInclude Include="Core\Include\UI\TextBox.h" />
+    <ClInclude Include="Core\Include\UI\TextInputObject.h" />
     <ClInclude Include="ThirdParty\DirectX\d3dx12.h" />
     <ClInclude Include="Core\Include\UI\Application.h" />
     <ClInclude Include="Core\Include\UI\BitmapUtils.h" />

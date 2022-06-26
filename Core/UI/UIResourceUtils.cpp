@@ -180,7 +180,7 @@ namespace d14engine::ui
         }
     }
 
-    UIResourceUtils::SystemFontNameSet UIResourceUtils::SYSTEM_FONT_NAMES;
+    UIResourceUtils::SystemFontNameSet UIResourceUtils::SYSTEM_FONT_NAMES = {};
 
     void UIResourceUtils::LoadBasicSystemTextFormats()
     {
@@ -217,7 +217,7 @@ namespace d14engine::ui
             &TEXT_FORMATS[textFormatName]));
     }
 
-    UIResourceUtils::TextFormatMap UIResourceUtils::TEXT_FORMATS;
+    UIResourceUtils::TextFormatMap UIResourceUtils::TEXT_FORMATS = {};
 
     void UIResourceUtils::LoadCommonBrushes()
     {
@@ -226,7 +226,7 @@ namespace d14engine::ui
             CreateSolidColorBrush((D2D1::ColorF)D2D1::ColorF::Black, &SOLID_COLOR_BRUSH));
     }
 
-    ComPtr<ID2D1SolidColorBrush> UIResourceUtils::SOLID_COLOR_BRUSH;
+    ComPtr<ID2D1SolidColorBrush> UIResourceUtils::SOLID_COLOR_BRUSH = {};
 
     void UIResourceUtils::LoadCommonEffects()
     {
@@ -235,5 +235,5 @@ namespace d14engine::ui
             CreateEffect(CLSID_D2D1Shadow, &SHADOW_EFFECT));
     }
 
-    ComPtr<ID2D1Effect> UIResourceUtils::SHADOW_EFFECT;
+    ComPtr<ID2D1Effect> UIResourceUtils::SHADOW_EFFECT = {};
 }

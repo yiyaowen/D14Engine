@@ -22,21 +22,21 @@ namespace d14engine::renderer
         void PostSceneToBackBuffer(Renderer* rndr);
 
     private:
-        UINT m_sceneWidth, m_sceneHeight;
+        UINT m_sceneWidth = {}, m_sceneHeight = {};
 
-        D3D12_VIEWPORT m_viewport;
-        D3D12_RECT m_scissorRect;
+        D3D12_VIEWPORT m_viewport = {};
+        D3D12_RECT m_scissorRect = {};
 
         struct Vertex
         {
-            XMFLOAT4 position;
-            XMFLOAT2 texcoord;
+            XMFLOAT4 position = {};
+            XMFLOAT2 texcoord = {};
         };
 
-        SharedPtr<DefaultBuffer> m_vertexBuffer;
-        D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+        SharedPtr<DefaultBuffer> m_vertexBuffer = {};
+        D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView = {};
 
-        ComPtr<ID3D12RootSignature> m_rootSignature;
-        ComPtr<ID3D12PipelineState> m_pipelineState;
+        ComPtr<ID3D12RootSignature> m_rootSignature = {};
+        ComPtr<ID3D12PipelineState> m_pipelineState = {};
     };
 }

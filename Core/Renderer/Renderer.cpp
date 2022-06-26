@@ -314,9 +314,9 @@ namespace d14engine::renderer
         ShowWindow(window.ptr, SW_NORMAL);
     }
 
-    ComPtr<IDXGIFactory6> Renderer::g_commonFactory;
+    ComPtr<IDXGIFactory6> Renderer::g_commonFactory = {};
 
-    Renderer::FactoryInfo Renderer::g_commonFactoryInfo;
+    Renderer::FactoryInfo Renderer::g_commonFactoryInfo = {};
 
     void Renderer::QueryCommonFactoryInfo()
     {
@@ -339,7 +339,7 @@ namespace d14engine::renderer
         g_commonFactoryInfo.features.allowTearing = SUCCEEDED(hr) && allowTearing;
     }
 
-    Renderer::AdapterArray Renderer::g_availableAdapters;
+    Renderer::AdapterArray Renderer::g_availableAdapters = {};
 
     void Renderer::SelectAdapter(UINT index)
     {

@@ -2,15 +2,18 @@
 
 #include "Precompile.h"
 
-#include "ResizablePanel.h"
-
 #include "Label.h"
 #include "MaskStyle.h"
+#include "ResizablePanel.h"
 #include "ShadowStyle.h"
 #include "SolidStyle.h"
 
 namespace d14engine::ui
 {
+    struct TabGroup;
+
+    // We must place ResizablePanel ahead of those XxxxStyles as their construction might
+    // depends on the initialized base-panel's geometry information (like position, size).
     struct Window : ResizablePanel, protected MaskStyle, protected ShadowStyle, SolidStyle
     {
         static ComPtr<ID2D1LinearGradientBrush>
@@ -56,25 +59,26 @@ namespace d14engine::ui
 
         struct ThreeBrosAppearance
         {
-            D2D1_COLOR_F buttonColor = (D2D1::ColorF)D2D1::ColorF::White;
-            float buttonOpacity = 0.0f;
+            D2D1_COLOR_F buttonColor = {};
+            float buttonOpacity = {};
 
-            D2D1_COLOR_F iconColor = (D2D1::ColorF)D2D1::ColorF::Black;
-            float iconOpacity = 1.0f;
+            D2D1_COLOR_F iconColor = {};
+            float iconOpacity = {};
         }
-        threeBrosAppearances[(size_t)(ThreeBrosState::Count)];
+        threeBrosAppearances[(size_t)(ThreeBrosState::Count)] = {};
 
         const Wstring& Title();
         void SetTitle(WstrViewParam title);
 
         float ClientAreaHeight();
 
-        constexpr float NonClientAreaHeight() { return 40.0f; }
+        constexpr static float NonClientAreaMinimalWidth() { return 144.0f; }
+        constexpr static float NonClientAreaHeight() { return 40.0f; }
 
         D2D1_RECT_F ClientAreaRect();
 
     protected:
-        SharedPtr<Label> m_title, m_closeX;
+        SharedPtr<Label> m_title = {};
 
         // Forbid the 3 brothers to respond events when move or resize the window.
         bool m_is3BrothersEnabled = true;
@@ -93,14 +97,44 @@ namespace d14engine::ui
         bool m_isMinimizeHover = false, m_isMinimizeDown = false;
 
         D2D1_RECT_F CloseButtonRect();
-        D2D1_RECT_F RelativeCloseButtonRect();
+        D2D1_RECT_F CloseIconRect();
+        constexpr static float CloseXStrokeWidth() { return 2.0f; }
+
         D2D1_RECT_F MaximizeButtonRect();
         D2D1_RECT_F MaximizeIconRect();
         D2D1_RECT_F MinimizeButtonRect();
         D2D1_RECT_F MinimizeIconRect();
 
-        void Set3BrothersButtonBrushState(bool isHover, bool isDown);
-        void Set3BrothersIconBrushState(bool isHover, bool isDown);
+        ThreeBrosState GetMinMaxBroState(bool isHover, bool isDown);
+        ThreeBrosState GetCloseXBroState(bool isHover, bool isDown);
+
+        void Set3BrothersButtonBrushState(ThreeBrosState state);
+        void Set3BrothersIconBrushState(ThreeBrosState state);
+
+    protected:
+        WeakPtr<Panel> m_centerUIObject = {};
+
+        // Only registered tab-group can receive and demote this window.
+        using RegisteredTabGroupSet = // See TabGroup.h for more details.
+            std::set<WeakPtr<TabGroup>, std::owner_less<WeakPtr<TabGroup>>>;
+
+        RegisteredTabGroupSet m_registeredTabGroups = {};
+
+    public:
+        SharedPtr<Panel> CenterUIObject();
+        void SetCenterUIObject(ShrdPtrParam<Panel> uiobj);
+
+        void RegisterTabGroup(WeakPtrParam<TabGroup> tg);
+        void UnregisterTabGroup(WeakPtrParam<TabGroup> tg);
+
+        float maskOpacityWhenDragAboveTabGroup = 0.5f;
+
+        // This field will be set to current hovered tab-group when dragging.
+        WeakPtr<TabGroup> temporaryAssociatedTabGroup = {};
+
+    protected:
+        void HandleMouseButtonForRegisteredTabGroups(MouseButtonEvent& e);
+        void HandleMouseMoveForRegisteredTabGroups(MouseMoveEvent& e);
 
     public:
         // Override interface methods.

@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include "Precompile.h"
-#include "RuntimeError.h"
 
 #include "Renderer.h"
 
