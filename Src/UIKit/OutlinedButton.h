@@ -1,0 +1,24 @@
+﻿#pragma once
+
+#include "Common/Precompile.h"
+
+#include "UIKit/Button.h"
+
+namespace d14engine::uikit
+{
+    struct OutlinedButton : Button
+    {
+        OutlinedButton(
+            WstrParam text,
+            const D2D1_RECT_F& rect,
+            float roundRadius = 0.0f,
+            ComPtrParam<ID2D1Bitmap1> icon = nullptr,
+            const D2D1_COLOR_F& strokeColor = { 0.78f, 0.12f, 0.2f, 1.0f },
+            float strokeWidth = 1.5f);
+
+        // Override interface methods.
+        
+        // Panel
+        void OnChangeThemeHelper(WstrViewParam themeName) override;
+    };
+}
