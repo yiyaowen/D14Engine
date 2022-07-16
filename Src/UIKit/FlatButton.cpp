@@ -1,22 +1,29 @@
 ﻿#include "Common/Precompile.h"
 
-#include "UIKit/OutlinedButton.h"
+#include "UIKit/FlatButton.h"
 
 namespace d14engine::uikit
 {
-    OutlinedButton::OutlinedButton(
+    FlatButton::FlatButton(
         WstrParam text,
         const D2D1_RECT_F& rect,
         float roundRadius,
         ComPtrParam<ID2D1Bitmap1> icon)
         :
         Panel(rect, Resu::SOLID_COLOR_BRUSH),
-        FlatButton(text, rect, roundRadius, icon) { }
+        Button(text, rect, roundRadius, icon) { }
 
-    void OutlinedButton::OnChangeThemeHelper(WstrViewParam themeName)
+    void FlatButton::OnInitializeFinish()
     {
-        // Call Button's OnChangeThemeHelper instead of FlatButton's since the appearance states
-        // would be configed in this method (no need to use the states configed in FlatButton).
+        Button::OnInitializeFinish();
+
+        // Note OnChangeThemeHelper has been called in OnInitializeFinish,
+        // so we need to update the appearance settings immediately here.
+        UpdateAppearanceSetting(State::Idle);
+    }
+
+    void FlatButton::OnChangeThemeHelper(WstrViewParam themeName)
+    {
         Button::OnChangeThemeHelper(themeName);
 
         if (themeName == L"Light")
@@ -28,7 +35,7 @@ namespace d14engine::uikit
 
                 // foreground
                 {
-                    D2D1::ColorF{ 0xbf2424 }, // color
+                    D2D1::ColorF{ 0x000000 }, // color
                     1.0f // opacity
                 },
                 // background
@@ -38,9 +45,9 @@ namespace d14engine::uikit
                 },
                 // stroke
                 {
-                    1.0f, // width
-                    D2D1::ColorF{ 0xbf2424 }, // color
-                    1.0f // opacity
+                    0.0f, // width
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
                 }
             };
             appearances[(size_t)State::Hover] =
@@ -50,19 +57,19 @@ namespace d14engine::uikit
 
                 // foreground
                 {
-                    D2D1::ColorF{ 0xd92929 }, // color
+                    D2D1::ColorF{ 0x000000 }, // color
                     1.0f // opacity
                 },
                 // background
                 {
-                    D2D1::ColorF{ 0xd92929 }, // color
-                    0.05f // opacity
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.06f // opacity
                 },
                 // stroke
                 {
-                    1.0f, // width
-                    D2D1::ColorF{ 0xd92929 }, // color
-                    1.0f // opacity
+                    0.0f, // width
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
                 }
             };
             appearances[(size_t)State::Down] =
@@ -72,19 +79,19 @@ namespace d14engine::uikit
 
                 // foreground
                 {
-                    D2D1::ColorF{ 0xcc2727 }, // color
+                    D2D1::ColorF{ 0x000000 }, // color
                     0.65f // opacity
                 },
                 // background
                 {
-                    D2D1::ColorF{ 0xcc2727 }, // color
-                    0.12f // opacity
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.03f // opacity
                 },
                 // stroke
                 {
-                    1.0f, // width
-                    D2D1::ColorF{ 0xcc2727 }, // color
-                    1.0f // opacity
+                    0.0f, // width
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
                 }
             };
         }
@@ -97,7 +104,7 @@ namespace d14engine::uikit
 
                 // foreground
                 {
-                    D2D1::ColorF{ 0x32995f }, // color
+                    D2D1::ColorF{ 0xe5e5e5 }, // color
                     1.0f // opacity
                 },
                 // background
@@ -107,9 +114,9 @@ namespace d14engine::uikit
                 },
                 // stroke
                 {
-                    1.0f, // width
-                    D2D1::ColorF{ 0x32995f }, // color
-                    1.0f // opacity
+                    0.0f, // width
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
                 }
             };
             appearances[(size_t)State::Hover] =
@@ -119,19 +126,19 @@ namespace d14engine::uikit
 
                 // foreground
                 {
-                    D2D1::ColorF{ 0x37a667 }, // color
+                    D2D1::ColorF{ 0xe5e5e5 }, // color
                     1.0f // opacity
                 },
                 // background
                 {
-                    D2D1::ColorF{ 0x37a667 }, // color
-                    0.05f // opacity
+                    D2D1::ColorF{ 0xffffff }, // color
+                    0.06f // opacity
                 },
                 // stroke
                 {
-                    1.0f, // width
-                    D2D1::ColorF{ 0x37a667 }, // color
-                    1.0f // opacity
+                    0.0f, // width
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
                 }
             };
             appearances[(size_t)State::Down] =
@@ -141,22 +148,35 @@ namespace d14engine::uikit
 
                 // foreground
                 {
-                    D2D1::ColorF{ 0x2e8c57 }, // color
+                    D2D1::ColorF{ 0xe5e5e5 }, // color
                     0.55f // opacity
                 },
                 // background
                 {
-                    D2D1::ColorF{ 0x2e8c57 }, // color
-                    0.12f // opacity
+                    D2D1::ColorF{ 0xffffff }, // color
+                    0.03f // opacity
                 },
                 // stroke
                 {
-                    1.0f, // width
-                    D2D1::ColorF{ 0x2e8c57 }, // color
-                    1.0f // opacity
+                    0.0f, // width
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
                 }
             };
         }
         UpdateAppearanceSetting(State::Idle);
+    }
+
+    void FlatButton::UpdateAppearanceSetting(State state)
+    {
+        auto& setting = appearances[(size_t)state];
+
+        bitmap = setting.bitmap;
+        bitmapOpacity = setting.bitmapOpacity;
+
+        textLabel->foreground = setting.foreground;
+        background = setting.background;
+
+        stroke = setting.stroke;
     }
 }

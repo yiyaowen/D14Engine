@@ -3,7 +3,6 @@
 #include "Common/Precompile.h"
 
 #include "UIKit/Label.h"
-#include "UIKit/MaskStyle.h"
 #include "UIKit/ResizablePanel.h"
 #include "UIKit/ShadowStyle.h"
 #include "UIKit/SolidStyle.h"
@@ -12,11 +11,14 @@
 
 namespace d14engine::uikit
 {
-    struct TabGroup : ResizablePanel, SolidStyle, StrokeStyle
+    struct TabGroup : ResizablePanel
     {
         explicit TabGroup(const D2D1_RECT_F& rect);
 
         void OnInitializeFinish() override;
+
+        SolidStyle background = {};
+        StrokeStyle stroke = {};
 
     public:
         // This field decides top-extended height of Panel's IsHit area.
@@ -29,7 +31,7 @@ namespace d14engine::uikit
             D2D1_COLOR_F color = {};
             float opacity = {};
 
-            float strokeWidth = {};
+            float width = {};
         }
         tabSeparatorStyle = {};
 
@@ -71,8 +73,8 @@ namespace d14engine::uikit
                 D2D1_COLOR_F foregroundColor = {};
                 float foregroundOpacity = {};
 
-                D2D1_COLOR_F backgroundColor = {};
-                float backgroundOpacity = {};
+                D2D1_COLOR_F color = {};
+                float opacity = {};
             }
             title = {};
 
@@ -90,12 +92,12 @@ namespace d14engine::uikit
                     D2D1_COLOR_F foregroundColor = {};
                     float foregroundOpacity = {};
 
-                    D2D1_COLOR_F backgroundColor = {};
-                    float backgroundOpacity = {};
+                    D2D1_COLOR_F color = {};
+                    float opacity = {};
                 }
                 colorSchemes[(size_t)TabCloseXState::Count] = {};
 
-                float strokeWidth = {};
+                float width = {};
             }
             closeX = {};
         }
@@ -185,7 +187,7 @@ namespace d14engine::uikit
     protected:
         bool IsTemporaryWindowDragAbove();
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
@@ -193,11 +195,13 @@ namespace d14engine::uikit
 
         void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
 
+    public:
         // Panel
         bool IsHit(Event::Point& p) override;
 
         float MinimalWidth() override;
 
+    protected:
         void OnSizeHelper(SizeEvent& e) override;
 
         void OnChangeThemeHelper(WstrViewParam themeName) override;

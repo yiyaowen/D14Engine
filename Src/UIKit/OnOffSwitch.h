@@ -2,8 +2,11 @@
 
 #include "Common/Precompile.h"
 
-#include "UIKit/Panel.h"
+#include "UIKit/ClickablePanel.h"
+#include "UIKit/MaskStyle.h"
+#include "UIKit/SolidStyle.h"
 #include "UIKit/StatefulObject.h"
+#include "UIKit/StrokeStyle.h"
 
 namespace d14engine::uikit
 {
@@ -27,11 +30,13 @@ namespace d14engine::uikit
         bool SwitchOff() { return flag == OnOffSwitchState::ActiveFlag::Off; }
     };
 
-    struct OnOffSwitch : Panel, StatefulObject<OnOffSwitchState, OnOffSwitchStateChangeEvent>
+    struct OnOffSwitch : ClickablePanel, StatefulObject<OnOffSwitchState, OnOffSwitchStateChangeEvent>
     {
         OnOffSwitch(
             const D2D1_RECT_F& rect = { 0.0f, 0.0f, 50.0f, 26.0f },
             float roundRadius = 13.0f);
+
+        MaskStyle mask = { 0, 0 };
 
         float handleVariableSpeedSecs = 0.05f;
         float handleUniformSpeedSecs = 0.05f;
@@ -39,12 +44,9 @@ namespace d14engine::uikit
     public:
         struct Appearance
         {
-            D2D1_COLOR_F backgroundColor = {};
-            float backgroundOpacity = {};
+            SolidStyle background = {};
 
-            D2D1_COLOR_F strokeColor = {};
-            float strokeOpacity = {};
-            float strokeWidth = {};
+            StrokeStyle stroke = {};
 
             struct Handle
             {
@@ -80,23 +82,32 @@ namespace d14engine::uikit
         float m_currHandleDisplacement = 0.0f;
         float m_currHandleOffsetToLeft = 0.0f;
 
-        bool m_hasLeftPressed = false; // See Button.h for detailed explanation.
-
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
         void OnRendererUpdateObject2DHelper(Renderer* rndr) override;
 
+        void OnRendererDrawD2D1LayerHelper(Renderer* rndr) override;
+
         void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
 
         // Panel
-        void OnChangeThemeHelper(WstrViewParam themeName) override;
+        void OnSizeHelper(SizeEvent& e) override;
 
-        bool OnMouseButtonHelper(MouseButtonEvent& e) override;
+        void OnChangeThemeHelper(WstrViewParam themeName) override;
 
         bool OnMouseEnterHelper(MouseMoveEvent& e) override;
 
         bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
+
+    public:
+        void SetEnabled(bool value) override;
+
+    protected:
+        // ClickablePanel
+        void OnMouseButtonPressHelper(ClickablePanel::Event& e) override;
+
+        void OnMouseButtonReleaseHelper(ClickablePanel::Event& e) override;
     };
 }

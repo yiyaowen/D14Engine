@@ -2,8 +2,11 @@
 
 #include "Common/Precompile.h"
 
-#include "UIKit/Panel.h"
+#include "UIKit/ClickablePanel.h"
+#include "UIKit/MaskStyle.h"
+#include "UIKit/SolidStyle.h"
 #include "UIKit/StatefulObject.h"
+#include "UIKit/StrokeStyle.h"
 
 namespace d14engine::uikit
 {
@@ -31,28 +34,25 @@ namespace d14engine::uikit
         bool Checked() { return flag == CheckBoxState::ActiveFlag::Checked; }
     };
 
-    struct CheckBox : Panel, StatefulObject<CheckBoxState, CheckBoxStateChangeEvent>
+    struct CheckBox : ClickablePanel, StatefulObject<CheckBoxState, CheckBoxStateChangeEvent>
     {
         CheckBox(
-            bool isThreeState = false,
+            bool isTripleState = false,
             const D2D1_RECT_F& rect = { 0.0f, 0.0f, 20.0f, 20.0f },
             float roundRadius = 4.0f);
+
+        MaskStyle mask = { 0, 0 };
 
     public:
         struct Appearance
         {
-            D2D1_COLOR_F backgroundColor = {};
-            float backgroundOpacity = {};
-
             ComPtr<ID2D1Bitmap1> bitmap = {};
             float bitmapOpacity = {};
 
-            D2D1_COLOR_F foregroundColor = {};
-            float foregroundOpacity = {};
+            SolidStyle foreground = {};
+            SolidStyle background = {};
 
-            D2D1_COLOR_F strokeColor = {};
-            float strokeOpacity = {};
-            float strokeWidth = {};
+            StrokeStyle stroke = {};
         }
         appearances[(size_t)State::Flag::Count] = {};
 
@@ -73,14 +73,14 @@ namespace d14engine::uikit
                 tickLine0 = { { 2.5f, 9.5f }, { 8.5f, 15.5f } },
                 tickLine1 = { { 6.5, 15.5f }, { 17.5f, 5.5f } };
 
-                float strokeWidth = 3.5f;
+                float width = 3.5f;
             }
             checked = {};
         }
         iconStyle = {};
 
     protected:
-        bool m_isThreeState = {};
+        bool m_isTripleState = {};
 
         using StateTransitionMap = std::unordered_map<
             State::ActiveFlag, // source state
@@ -91,29 +91,38 @@ namespace d14engine::uikit
         // When clicked, current state will be changed to related destination state.
         StateTransitionMap m_stateTransitionMap = {};
 
-        bool m_hasLeftPressed = false; // See Button.h for detailed explanation.
-
     public:
-        bool IsThreeState();
-        void EnableThreeState(bool value);
+        bool IsTripleState();
+        void EnableTripleState(bool value);
 
     protected:
         void DrawIntermidiateIcon(Renderer* rndr);
         void DrawCheckedIcon(Renderer* rndr);
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
+        void OnRendererDrawD2D1LayerHelper(Renderer* rndr) override;
+
         void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
 
         // Panel
-        void OnChangeThemeHelper(WstrViewParam themeName) override;
+        void OnSizeHelper(SizeEvent& e) override;
 
-        bool OnMouseButtonHelper(MouseButtonEvent& e) override;
+        void OnChangeThemeHelper(WstrViewParam themeName) override;
 
         bool OnMouseEnterHelper(MouseMoveEvent& e) override;
 
         bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
+
+    public:
+        void SetEnabled(bool value) override;
+
+    protected:
+        // ClickablePanel
+        void OnMouseButtonPressHelper(ClickablePanel::Event& e) override;
+
+        void OnMouseButtonReleaseHelper(ClickablePanel::Event& e) override;
     };
 }

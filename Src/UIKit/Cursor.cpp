@@ -34,7 +34,7 @@ namespace d14engine::uikit
 
             icon.bitmap = Bitmapu::LoadBitmapFromFile(
                 std::get<1>(path),
-                Application::APP->MainRenderer()->commonInfo.assetsPath + L"Images/Cursors/WinClassics/");
+                Application::APP->MainRenderer()->commonInfo.assetsPath + L"Images/UIKit/Cursors/WinClassics/");
 
             icon.displayOffset = std::get<2>(path);
         }

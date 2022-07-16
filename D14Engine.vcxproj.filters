@@ -57,7 +57,7 @@
     <ClCompile Include="Src\UIKit\SolidStyle.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Src\UIKit\Button.cpp">
+    <ClCompile Include="Src\UIKit\FlatButton.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Src\UIKit\OutlinedButton.cpp">
@@ -133,6 +133,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Src\UIKit\TreeView.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UIKit\ToggleButton.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UIKit\Button.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UIKit\SandwichButton.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UIKit\ClickablePanel.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -218,7 +230,7 @@
     <ClInclude Include="Src\UIKit\SolidStyle.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Src\UIKit\Button.h">
+    <ClInclude Include="Src\UIKit\FlatButton.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Src\UIKit\OutlinedButton.h">
@@ -285,6 +297,18 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Src\UIKit\TreeView.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\UIKit\ToggleButton.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\UIKit\Button.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\UIKit\SandwichButton.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\UIKit\ClickablePanel.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

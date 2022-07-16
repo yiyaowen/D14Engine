@@ -9,17 +9,17 @@
 namespace d14engine::uikit
 {
     ShadowStyle::ShadowStyle(
-        UINT shadowBitmapWidth,
-        UINT shadowBitmapHeight,
-        float shadowStandardDeviation,
-        D2D1_COLOR_F shadowColor,
-        D2D1_SHADOW_OPTIMIZATION shadowOptimization)
+        UINT bitmapWidth,
+        UINT bitmapHeight,
+        D2D1_COLOR_F color,
+        float standardDeviation,
+        D2D1_SHADOW_OPTIMIZATION optimization)
         :
-        shadowStandardDeviation(shadowStandardDeviation),
-        shadowColor(shadowColor),
-        shadowOptimization(shadowOptimization)
+        color(color),
+        standardDeviation(standardDeviation),
+        optimization(optimization)
     {
-        LoadShadowBitmap(shadowBitmapWidth, shadowBitmapHeight);
+        LoadShadowBitmap(bitmapWidth, bitmapHeight);
     }
 
     void ShadowStyle::LoadShadowBitmap(UINT width, UINT height)
@@ -27,7 +27,7 @@ namespace d14engine::uikit
         Resu::SHADOW_EFFECT->SetInput(0, nullptr);
         Application::APP->MainRenderer()->BeginExternalEvent();
 
-        shadowBitmap = Bitmapu::LoadBitmapFromMemory(
+        bitmap = Bitmapu::LoadBitmapFromMemory(
             width, height, nullptr, D2D1_BITMAP_OPTIONS_TARGET);
 
         Application::APP->MainRenderer()->EndExternalEvent();
@@ -35,12 +35,12 @@ namespace d14engine::uikit
 
     void ShadowStyle::BeginDrawOnShadow(ID2D1DeviceContext* context, const D2D1_MATRIX_3X2_F& transform)
     {
-        context->SetTarget(shadowBitmap.Get());
+        context->SetTarget(bitmap.Get());
 
         context->BeginDraw();
         context->SetTransform(D2D1::Matrix3x2F::Identity());
 
-        context->Clear({ 0.0f, 0.0f, 0.0f, 0.0f });
+        context->Clear(D2D1::ColorF{ 0x000000, 0.0f });
     }
 
     void ShadowStyle::EndDrawOnShadow(ID2D1DeviceContext* context)
@@ -50,10 +50,10 @@ namespace d14engine::uikit
 
     void ShadowStyle::ConfigShadowEffectInput(ID2D1Effect* effect)
     {
-        effect->SetInput(0, shadowBitmap.Get());
+        effect->SetInput(0, bitmap.Get());
 
-        effect->SetValue(D2D1_SHADOW_PROP_BLUR_STANDARD_DEVIATION, shadowStandardDeviation);
-        effect->SetValue(D2D1_SHADOW_PROP_COLOR, shadowColor);
-        effect->SetValue(D2D1_SHADOW_PROP_OPTIMIZATION, shadowOptimization);
+        effect->SetValue(D2D1_SHADOW_PROP_BLUR_STANDARD_DEVIATION, standardDeviation);
+        effect->SetValue(D2D1_SHADOW_PROP_COLOR, color);
+        effect->SetValue(D2D1_SHADOW_PROP_OPTIMIZATION, optimization);
     }
 }

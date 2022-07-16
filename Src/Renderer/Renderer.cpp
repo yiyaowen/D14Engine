@@ -1091,7 +1091,7 @@ namespace d14engine::renderer
 
         d2d1DeviceContext->SetTarget(nullptr);
         // Don't flush the d2d1 device context here since it's redundant and invalid.
-        // It doesn't flush the d3d11 device context and may fail if called outside the BeginDraw/EndDraw call.
+        // It doesn't flush the d3d11 device context and may fail if called outside the BeginMaskDraw/EndMaskDraw call.
 
         d3d11DeviceContext->ClearState();
         d3d11DeviceContext->Flush();

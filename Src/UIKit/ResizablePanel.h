@@ -6,7 +6,7 @@
 
 namespace d14engine::uikit
 {
-    struct ResizablePanel : Panel
+    struct ResizablePanel : virtual Panel
     {
         ResizablePanel(
             const D2D1_RECT_F& rect,
@@ -46,8 +46,14 @@ namespace d14engine::uikit
         // Panel
         bool IsHit(Event::Point& p) override;
 
+    protected:
+        // See ClickablePanel.h for the reason of an extral OnXxxWrapper.
+
         bool OnMouseButtonHelper(MouseButtonEvent& e) override;
+        void OnMouseButtonWrapper(MouseButtonEvent& e);
 
         bool OnMouseMoveHelper(MouseMoveEvent& e) override;
+        // Return whether to handle children events in Panel.
+        bool OnMouseMoveWrapper(MouseMoveEvent& e);
     };
 }

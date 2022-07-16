@@ -25,7 +25,9 @@ namespace d14engine::uikit
 
     struct ConstraintLayout : Layout<ConstraintLayoutGeometryInfo>
     {
-        using Layout::Layout;
+        explicit ConstraintLayout(const D2D1_RECT_F& rect);
+
+        using Layout::UpdateElement;
 
     protected:
         void UpdateElement(ElementGeometryInfoMap::iterator& elemItor) override;

@@ -223,7 +223,7 @@ namespace d14engine::uikit
     {
         // Solid Color Brush
         THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-            CreateSolidColorBrush((D2D1::ColorF)D2D1::ColorF::Black, &SOLID_COLOR_BRUSH));
+            CreateSolidColorBrush(D2D1::ColorF{ 0x000000 }, &SOLID_COLOR_BRUSH));
     }
 
     ComPtr<ID2D1SolidColorBrush> ResourceUtils::SOLID_COLOR_BRUSH = {};

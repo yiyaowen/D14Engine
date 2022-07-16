@@ -9,27 +9,31 @@ using namespace d14engine::renderer;
 
 namespace d14engine::uikit
 {
-    CheckBox::CheckBox(bool isThreeState, const D2D1_RECT_F& rect, float roundRadius)
+    CheckBox::CheckBox(bool isTripleState, const D2D1_RECT_F& rect, float roundRadius)
         :
-        Panel(rect, Resu::SOLID_COLOR_BRUSH)
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
+        ClickablePanel(rect, Resu::SOLID_COLOR_BRUSH),
+        mask(Mathu::Rounding(Width()), Mathu::Rounding(Height()))
     {
+        m_takeOverChildrenDrawing = true;
+
         roundRadiusX = roundRadiusY = roundRadius;
 
         m_state = { State::ActiveFlag::Unchecked, State::ButtonFlag::Idle };
 
-        EnableThreeState(isThreeState);
+        EnableTripleState(isTripleState);
     }
 
-    bool CheckBox::IsThreeState()
+    bool CheckBox::IsTripleState()
     {
-        return m_isThreeState;
+        return m_isTripleState;
     }
 
-    void CheckBox::EnableThreeState(bool value)
+    void CheckBox::EnableTripleState(bool value)
     {
         m_state.activeFlag = State::ActiveFlag::Unchecked;
 
-        if (m_isThreeState = value)
+        if (m_isTripleState = value)
         {
             m_stateTransitionMap =
             {
@@ -38,7 +42,7 @@ namespace d14engine::uikit
                 { State::ActiveFlag::Checked, State::ActiveFlag::Unchecked }
             };
         }
-        else // Use two-state model.
+        else // Use double-state model.
         {
             m_stateTransitionMap =
             {
@@ -60,8 +64,8 @@ namespace d14engine::uikit
 
         auto& setting = appearances[m_state.Index()];
 
-        Resu::SOLID_COLOR_BRUSH->SetColor(setting.foregroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.foregroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(setting.foreground.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.foreground.opacity);
 
         rndr->d2d1DeviceContext->FillRectangle(iconRect, Resu::SOLID_COLOR_BRUSH.Get());
     }
@@ -78,86 +82,135 @@ namespace d14engine::uikit
 
         auto& setting = appearances[m_state.Index()];
 
-        Resu::SOLID_COLOR_BRUSH->SetColor(setting.foregroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.foregroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(setting.foreground.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.foreground.opacity);
 
-        rndr->d2d1DeviceContext->DrawLine(point0, point1, Resu::SOLID_COLOR_BRUSH.Get(), style.strokeWidth);
-        rndr->d2d1DeviceContext->DrawLine(point2, point3, Resu::SOLID_COLOR_BRUSH.Get(), style.strokeWidth);
+        rndr->d2d1DeviceContext->DrawLine(point0, point1, Resu::SOLID_COLOR_BRUSH.Get(), style.width);
+        rndr->d2d1DeviceContext->DrawLine(point2, point3, Resu::SOLID_COLOR_BRUSH.Get(), style.width);
+    }
+
+    void CheckBox::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
+    {
+        ClickablePanel::OnRendererDrawD2D1LayerHelper(rndr);
+
+        // Hide children by default (Only draw self part).
+        mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        {
+            auto& setting = appearances[m_state.Index()];
+
+            // Background
+            Resu::SOLID_COLOR_BRUSH->SetColor(setting.background.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.background.opacity);
+
+            if (brush != nullptr)
+            {
+                rndr->d2d1DeviceContext->FillRoundedRectangle(
+                    { m_absoluteRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get());
+            }
+            if (bitmap != nullptr)
+            {
+                rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), AbsoluteRect(), bitmapOpacity);
+            }
+
+            // Icon
+            if (m_state.activeFlag == State::ActiveFlag::Intermidiate) DrawIntermidiateIcon(rndr);
+            else if (m_state.activeFlag == State::ActiveFlag::Checked) DrawCheckedIcon(rndr);
+
+            // Outline
+            Resu::SOLID_COLOR_BRUSH->SetColor(setting.stroke.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.stroke.opacity);
+
+            auto innerRect = Mathu::Stretch(m_absoluteRect, { -setting.stroke.width * 0.5f, -setting.stroke.width * 0.5f });
+
+            rndr->d2d1DeviceContext->DrawRoundedRectangle(
+                { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), setting.stroke.width);
+        }
+        mask.EndMaskDraw(rndr->d2d1DeviceContext.Get());
     }
 
     void CheckBox::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
-        auto& setting = appearances[m_state.Index()];
+        rndr->d2d1DeviceContext->DrawBitmap(mask.bitmap.Get(), m_absoluteRect, mask.opacity);
+    }
 
-        // Background
-        Resu::SOLID_COLOR_BRUSH->SetColor(setting.backgroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.backgroundOpacity);
+    void CheckBox::OnSizeHelper(SizeEvent& e)
+    {
+        ClickablePanel::OnSizeHelper(e);
 
-        if (brush != nullptr)
-        {
-            rndr->d2d1DeviceContext->FillRoundedRectangle(
-                { m_absoluteRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get());
-        }
-        if (bitmap != nullptr)
-        {
-            rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), AbsoluteRect(), bitmapOpacity);
-        }
-
-        // Icon
-        if (m_state.activeFlag == State::ActiveFlag::Intermidiate) DrawIntermidiateIcon(rndr);
-        else if (m_state.activeFlag == State::ActiveFlag::Checked) DrawCheckedIcon(rndr);
-
-        // Outline
-        Resu::SOLID_COLOR_BRUSH->SetColor(setting.strokeColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(setting.strokeOpacity);
-
-        auto innerRect = Mathu::Stretch(m_absoluteRect, { -setting.strokeWidth * 0.5f, -setting.strokeWidth * 0.5f });
-
-        rndr->d2d1DeviceContext->DrawRoundedRectangle(
-            { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), setting.strokeWidth);
+        mask.LoadMaskBitmap(Mathu::Rounding(e.size.width), Mathu::Rounding(e.size.height));
     }
 
     void CheckBox::OnChangeThemeHelper(WstrViewParam themeName)
     {
-        Panel::OnChangeThemeHelper(themeName);
+        ClickablePanel::OnChangeThemeHelper(themeName);
 
         if (themeName == L"Light")
         {
             appearances[(size_t)State::Flag::UncheckedIdle] =
             {
-                { 0.98f, 0.98f, 0.98f, 1.0f }, // background color
-                1.0f, // background opacity
                 appearances[(size_t)State::Flag::UncheckedIdle].bitmap, // bitmap
                 1.0f, // bitmap opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
-                0.0f, // foreground opacity
-                { 0.7f, 0.7f, 0.7f, 1.0f }, // stroke color
-                1.0f, // stroke opacity
-                1.0f // stroke width
+
+                // foreground
+                {
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0xf2f2f2 }, // color
+                    1.0f // opacity
+                },
+                // stroke
+                {
+                    1.0f, // width
+                    D2D1::ColorF{ 0x8f8f8f }, // color
+                    1.0f // opacity
+                }
             };
             appearances[(size_t)State::Flag::UncheckedHover] =
             {
-                { 0.95f, 0.95f, 0.95f, 1.0f }, // background color
-                1.0f, // background opacity
                 appearances[(size_t)State::Flag::UncheckedHover].bitmap, // bitmap
                 1.0f, // bitmap opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
-                0.0f, // foreground opacity
-                { 0.7f, 0.7f, 0.7f, 1.0f }, // stroke color
-                1.0f, // stroke opacity
-                1.0f // stroke width
+
+                // foreground
+                {
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0xebebeb }, // color
+                    1.0f // opacity
+                },
+                // stroke
+                {
+                    1.0f, // width
+                    D2D1::ColorF{ 0x8f8f8f }, // color
+                    1.0f // opacity
+                }
             };
             appearances[(size_t)State::Flag::UncheckedDown] =
             {
-                { 0.95f, 0.95f, 0.95f, 1.0f }, // background color
-                1.0f, // background opacity
                 appearances[(size_t)State::Flag::UncheckedDown].bitmap, // bitmap
                 1.0f, // bitmap opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
-                0.0f, // foreground opacity
-                { 0.8f, 0.8f, 0.8f, 1.0f }, // stroke color
-                1.0f, // stroke opacity
-                1.0f // stroke width
+
+                // foreground
+                {
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0xe3e3e3 }, // color
+                    1.0f // opacity
+                },
+                // stroke
+                {
+                    1.0f, // width
+                    D2D1::ColorF{ 0xbcbcbc }, // color
+                    1.0f // opacity
+                }
             };
             ComPtr<ID2D1Bitmap1> originalBitmap;
             {
@@ -166,15 +219,25 @@ namespace d14engine::uikit
                 appearances[(size_t)State::Flag::IntermidiateIdle] =
                 appearances[(size_t)State::Flag::CheckedIdle] =
                 {
-                    { 0.78f, 0.12f, 0.2f, 1.0f }, // background color
-                    1.0f, // background opacity
                     appearances[(size_t)State::Flag::IntermidiateIdle].bitmap, // bitmap
                     1.0f, // bitmap opacity
-                    { 0.98f, 0.98f, 0.98f, 1.0f }, // foreground color
-                    1.0f, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-                    0.0f, // stroke opacity
-                    0.0f // stroke width
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0xfafafa }, // color
+                        1.0f // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0xbf2424 }, // color
+                        1.0f // opacity
+                    },
+                    // stroke
+                    {
+                        0.0f, // width
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 };
                 appearances[(size_t)State::Flag::CheckedIdle].bitmap = originalBitmap;
             }
@@ -184,15 +247,25 @@ namespace d14engine::uikit
                 appearances[(size_t)State::Flag::IntermidiateHover] =
                 appearances[(size_t)State::Flag::CheckedHover] =
                 {
-                    { 0.82f, 0.1f, 0.22f, 1.0f }, // background color
-                    1.0f, // background opacity
                     appearances[(size_t)State::Flag::IntermidiateHover].bitmap, // bitmap
-                    0.9f, // bitmap opacity
-                    { 0.98f, 0.98f, 0.98f, 1.0f }, // foreground color
-                    0.9f, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-                    0.0f, // stroke opacity
-                    0.0f // stroke width
+                    1.0f, // bitmap opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0xfafafa }, // color
+                        1.0f // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0xd92929 }, // color
+                        1.0f // opacity
+                    },
+                    // stroke
+                    {
+                        0.0f, // width
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 };
                 appearances[(size_t)State::Flag::CheckedHover].bitmap = originalBitmap;
             }
@@ -202,15 +275,25 @@ namespace d14engine::uikit
                 appearances[(size_t)State::Flag::IntermidiateDown] =
                 appearances[(size_t)State::Flag::CheckedDown] =
                 {
-                    (D2D1::ColorF)D2D1::ColorF::Crimson, // background color
-                    1.0f, // background opacity
                     appearances[(size_t)State::Flag::IntermidiateDown].bitmap, // bitmap
-                    0.8f, // bitmap opacity
-                    { 0.98f, 0.98f, 0.98f, 1.0f }, // foreground color
-                    0.8f, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-                    0.0f, // stroke opacity
-                    0.0f // stroke width
+                    1.0f, // bitmap opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0xfafafa }, // color
+                        1.0f // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0xcc2727 }, // color
+                        1.0f // opacity
+                    },
+                    // stroke
+                    {
+                        0.0f, // width
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 };
                 appearances[(size_t)State::Flag::CheckedDown].bitmap = originalBitmap;
             }
@@ -219,39 +302,69 @@ namespace d14engine::uikit
         {
             appearances[(size_t)State::Flag::UncheckedIdle] =
             {
-                { 0.06f, 0.06f, 0.06f, 1.0f }, // background color
-                1.0f, // background opacity
                 appearances[(size_t)State::Flag::UncheckedIdle].bitmap, // bitmap
                 1.0f, // bitmap opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
-                0.0f, // foreground opacity
-                { 0.4f, 0.4f, 0.4f, 1.0f }, // stroke color
-                1.0f, // stroke opacity
-                1.0f // stroke width
+
+                // foreground
+                {
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0x1f1f1f }, // color
+                    1.0f // opacity
+                },
+                // stroke
+                {
+                    1.0f, // width
+                    D2D1::ColorF{ 0x7a7a7a }, // color
+                    1.0f // opacity
+                }
             };
             appearances[(size_t)State::Flag::UncheckedHover] =
             {
-                { 0.08f, 0.08f, 0.08f, 1.0f }, // background color
-                1.0f, // background opacity
                 appearances[(size_t)State::Flag::UncheckedHover].bitmap, // bitmap
                 1.0f, // bitmap opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
-                0.0f, // foreground opacity
-                { 0.4f, 0.4f, 0.4f, 1.0f }, // stroke color
-                1.0f, // stroke opacity
-                1.0f // stroke width
+
+                // foreground
+                {
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0x262626 }, // color
+                    1.0f // opacity
+                },
+                // stroke
+                {
+                    1.0f, // width
+                    D2D1::ColorF{ 0x7a7a7a }, // color
+                    1.0f // opacity
+                }
             };
             appearances[(size_t)State::Flag::UncheckedDown] =
             {
-                { 0.1f, 0.1f, 0.1f, 1.0f }, // background color
-                1.0f, // background opacity
                 appearances[(size_t)State::Flag::UncheckedDown].bitmap, // bitmap
                 1.0f, // bitmap opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
-                0.0f, // foreground opacity
-                { 0.3f, 0.3f, 0.3f, 1.0f }, // stroke color
-                1.0f, // stroke opacity
-                1.0f // stroke width
+
+                // foreground
+                {
+                    D2D1::ColorF{ 0x000000 }, // color
+                    0.0f // opacity
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0x1a1a1a }, // color
+                    1.0f // opacity
+                },
+                // stroke
+                {
+                    1.0f, // width
+                    D2D1::ColorF{ 0x4c4c4c }, // color
+                    1.0f // opacity
+                }
             };
             ComPtr<ID2D1Bitmap1> originalBitmap;
             {
@@ -260,15 +373,25 @@ namespace d14engine::uikit
                 appearances[(size_t)State::Flag::IntermidiateIdle] =
                 appearances[(size_t)State::Flag::CheckedIdle] =
                 {
-                    { 0.2f, 0.62f, 0.39f, 1.0f }, // background color
-                    1.0f, // background opacity
                     appearances[(size_t)State::Flag::IntermidiateIdle].bitmap, // bitmap
                     1.0f, // bitmap opacity
-                    { 0.1f, 0.1f, 0.1f, 1.0f }, // foreground color
-                    1.0f, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-                    0.0f, // stroke opacity
-                    0.0f // stroke width
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0x0d0d0d }, // color
+                        1.0f // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x32995f }, // color
+                        1.0f // opacity
+                    },
+                    // stroke
+                    {
+                        0.0f, // width
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 };
                 appearances[(size_t)State::Flag::CheckedIdle].bitmap = originalBitmap;
             }
@@ -278,15 +401,25 @@ namespace d14engine::uikit
                 appearances[(size_t)State::Flag::IntermidiateHover] =
                 appearances[(size_t)State::Flag::CheckedHover] =
                 {
-                    { 0.2f, 0.62f, 0.39f, 1.0f }, // background color
-                    0.9f, // background opacity
                     appearances[(size_t)State::Flag::IntermidiateHover].bitmap, // bitmap
                     1.0f, // bitmap opacity
-                    { 0.1f, 0.1f, 0.1f, 1.0f }, // foreground color
-                    1.0f, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-                    0.0f, // stroke opacity
-                    0.0f // stroke width
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0x0d0d0d }, // color
+                        1.0f // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x37a667 }, // color
+                        1.0f // opacity
+                    },
+                    // stroke
+                    {
+                        0.0f, // width
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 };
                 appearances[(size_t)State::Flag::CheckedHover].bitmap = originalBitmap;
             }
@@ -296,63 +429,77 @@ namespace d14engine::uikit
                 appearances[(size_t)State::Flag::IntermidiateDown] =
                 appearances[(size_t)State::Flag::CheckedDown] =
                 {
-                    { 0.2f, 0.62f, 0.39f, 1.0f }, // background color
-                    0.8f, // background opacity
                     appearances[(size_t)State::Flag::IntermidiateDown].bitmap, // bitmap
                     1.0f, // bitmap opacity
-                    { 0.1f, 0.1f, 0.1f, 1.0f }, // foreground color
-                    1.0f, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // stroke color
-                    0.0f, // stroke opacity
-                    0.0f // stroke width
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0x0d0d0d }, // color
+                        1.0f // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x2e8c57 }, // color
+                        1.0f // opacity
+                    },
+                    // stroke
+                    {
+                        0.0f, // width
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 };
                 appearances[(size_t)State::Flag::CheckedDown].bitmap = originalBitmap;
             }
         }
     }
 
-    bool CheckBox::OnMouseButtonHelper(MouseButtonEvent& e)
-    {
-        if (e.status.LeftDown())
-        {
-            m_state.buttonFlag = State::ButtonFlag::Down;
-
-            m_hasLeftPressed = true;
-        }
-        else if (e.status.LeftUp())
-        {
-            if (m_hasLeftPressed)
-            {
-                m_state.buttonFlag = State::ButtonFlag::Hover;
-
-                m_hasLeftPressed = false;
-
-                // Change current active state.
-                m_state.activeFlag = m_stateTransitionMap[m_state.activeFlag];
-
-                // Trigger state changing event.
-                Event e = {};
-                e.flag = m_state.activeFlag;
-
-                OnStateChange(e);
-            }
-        }
-        return Panel::OnMouseButtonHelper(e);
-    }
-
     bool CheckBox::OnMouseEnterHelper(MouseMoveEvent& e)
     {
         m_state.buttonFlag = State::ButtonFlag::Hover;
 
-        return Panel::OnMouseEnterHelper(e);
+        return ClickablePanel::OnMouseEnterHelper(e);
     }
 
     bool CheckBox::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
         m_state.buttonFlag = State::ButtonFlag::Idle;
 
-        m_hasLeftPressed = false;
+        return ClickablePanel::OnMouseLeaveHelper(e);
+    }
 
-        return Panel::OnMouseLeaveHelper(e);
+    void CheckBox::SetEnabled(bool value)
+    {
+        ClickablePanel::SetEnabled(value);
+
+        mask.opacity = value ? 1.0f : 0.45f;
+
+        m_state.buttonFlag = State::ButtonFlag::Idle;
+    }
+
+    void CheckBox::OnMouseButtonPressHelper(ClickablePanel::Event& e)
+    {
+        ClickablePanel::OnMouseButtonPressHelper(e);
+
+        m_state.buttonFlag = State::ButtonFlag::Down;
+    }
+
+    void CheckBox::OnMouseButtonReleaseHelper(ClickablePanel::Event& e)
+    {
+        ClickablePanel::OnMouseButtonReleaseHelper(e);
+
+        if (e.Left())
+        {
+            m_state.buttonFlag = State::ButtonFlag::Hover;
+
+            // Change current active state.
+            m_state.activeFlag = m_stateTransitionMap[m_state.activeFlag];
+
+            // Trigger state changing event.
+            StatefulObjectType::Event soe = {};
+            soe.flag = m_state.activeFlag;
+
+            OnStateChange(soe);
+        }
     }
 }

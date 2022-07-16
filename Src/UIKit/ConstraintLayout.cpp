@@ -4,6 +4,11 @@
 
 namespace d14engine::uikit
 {
+    ConstraintLayout::ConstraintLayout(const D2D1_RECT_F& rect)
+        :
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
+        Layout(rect) { }
+
     void ConstraintLayout::UpdateElement(ElementGeometryInfoMap::iterator& elemItor)
     {
         if (!elemItor->first.expired())

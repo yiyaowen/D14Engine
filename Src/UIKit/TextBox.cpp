@@ -2,6 +2,9 @@
 
 #include "UIKit/TextBox.h"
 
+#include "Renderer/MathUtils.h"
+using namespace d14engine::renderer;
+
 #include "UIKit/Application.h"
 
 namespace d14engine::uikit
@@ -9,11 +12,11 @@ namespace d14engine::uikit
     TextBox::TextBox(const D2D1_RECT_F& rect, float roundRadius)
         :
         Panel(rect, Resu::SOLID_COLOR_BRUSH),
-        MaskStyle((UINT)(Width() - 2.0f * roundRadius), (UINT)Height()),
-        SolidStyle((D2D1::ColorF)D2D1::ColorF::White, 1.0f),
-        m_visibleTextRect({ roundRadius, 0.0f, Width() - roundRadius, Height() })
+        m_visibleTextRect({ roundRadius, 0.0f, Width() - roundRadius, Height() }),
+        m_visibleTextMaskStyle(Mathu::Rounding(VisibleTextWidth()), Mathu::Rounding(VisibleTextHeight()))
     {
         m_takeOverChildrenDrawing = true;
+        m_skipChangeChildrenTheme = true;
 
         isFocusable = true;
 
@@ -27,7 +30,7 @@ namespace d14engine::uikit
                 {
                     m_visibleTextRect.left,
                     m_visibleTextRect.top,
-                    FLT_MAX, // Single line.
+                    Label::Infinity(), // Single line.
                     m_visibleTextRect.bottom
                 });
 
@@ -42,10 +45,6 @@ namespace d14engine::uikit
         {
             m_hiliteTextLabel = MakeUIObject<Label>(L"", D2D1_RECT_F{ 0.0f, 0.0f, 0.0f, 0.0f });
 
-            m_hiliteTextLabel->foregroundColor = (D2D1::ColorF)D2D1::ColorF::White;
-            m_hiliteTextLabel->backgroundColor = (D2D1::ColorF)D2D1::ColorF::CornflowerBlue;
-            m_hiliteTextLabel->backgroundOpacity = 1.0f;
-
             m_hiliteTextLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
         }
     }
@@ -54,7 +53,7 @@ namespace d14engine::uikit
     {
         Panel::OnInitializeFinish();
 
-        // Show hilite text above normal text.
+        // Display the hilite text above the normal text.
         m_textLabel->SetD2D1ObjectPriority(0);
         m_hiliteTextLabel->SetD2D1ObjectPriority(1);
 
@@ -117,22 +116,22 @@ namespace d14engine::uikit
 
     void TextBox::SetTextForegroundColor(const D2D1_COLOR_F& color)
     {
-        m_textLabel->foregroundColor = color;
+        m_textLabel->foreground.color = color;
     }
 
     void TextBox::SetTextForegroundOpacity(float opacity)
     {
-        m_textLabel->foregroundOpacity = opacity;
+        m_textLabel->foreground.opacity = opacity;
     }
 
     void TextBox::SetTextBackgroundColor(const D2D1_COLOR_F& color)
     {
-        m_textLabel->backgroundColor = color;
+        m_textLabel->background.color = color;
     }
 
     void TextBox::SetTextBackgroundOpacity(float opacity)
     {
-        m_textLabel->backgroundOpacity = opacity;
+        m_textLabel->background.opacity = opacity;
     }
 
     const Wstring& TextBox::HiliteText()
@@ -177,47 +176,43 @@ namespace d14engine::uikit
 
         m_hiliteTextLabel->SetText(std::move(hiliteText));
         
-        float textAreaStartX = m_textLabel->Position().x;
+        D2D1_RECT_F hiliteRect = m_textLabel->RelativeRect();
 
         // nullopt to use the internally value.
-        float startCharacterOffsetX = m_textLabel->GetTextLayoutMetrics(
+        m_hiliteTextBackgroundDrawInfo.startOffsetX = m_textLabel->GetTextLayoutMetrics(
             std::nullopt, 0, (UINT32)m_hiliteTextRange.offset).widthIncludingTrailingWhitespace;
+
         // end count = start count + middle count
-        float endCharacterOffsetX = m_textLabel->GetTextLayoutMetrics(
+        m_hiliteTextBackgroundDrawInfo.endOffsetX = m_textLabel->GetTextLayoutMetrics(
             std::nullopt, 0, (UINT32)(m_hiliteTextRange.offset + m_hiliteTextRange.count)).widthIncludingTrailingWhitespace;
         
-        float hiliteRectLeft = textAreaStartX + startCharacterOffsetX;
-        // FIXME: why is the queried size not enough to contain the text? 
-        // This might be caused by the floating point error introduced when convert between rectangles.
-        // I'd like to add a small increment to the queried width to fix this error for the time being.
-        float hiliteRectWidth = endCharacterOffsetX - startCharacterOffsetX;
-        if (hiliteRectWidth != 0.0f) hiliteRectWidth += 0.1f; // No need to adjust for empty hilite text.
-
-        // The hilite rectangle should have the same height with the indicator.
-        float hiliteRectTop = indicatorExternalY;
-        float hiliteRectHeight = Height() - 2.0f * indicatorExternalY;
-
-        m_hiliteTextLabel->Transform(hiliteRectLeft, hiliteRectTop, hiliteRectWidth, hiliteRectHeight);
+        hiliteRect.left += m_hiliteTextBackgroundDrawInfo.startOffsetX;
+        hiliteRect.top += indicatorExternalY;
+        hiliteRect.bottom -= indicatorExternalY;
+        
+        // Use transform instead of move here since the hilite text label
+        // might haven't been prepared yet (it was initialized all-zero).
+        m_hiliteTextLabel->Transform(hiliteRect);
     }
 
     void TextBox::SetHiliteTextForegroundColor(const D2D1_COLOR_F& color)
     {
-        m_hiliteTextLabel->foregroundColor = color;
+        m_hiliteTextLabel->foreground.color = color;
     }
 
     void TextBox::SetHiliteTextForegroundOpacity(float opacity)
     {
-        m_hiliteTextLabel->foregroundOpacity = opacity;
+        m_hiliteTextLabel->foreground.opacity = opacity;
     }
 
     void TextBox::SetHiliteTextBackgroundColor(const D2D1_COLOR_F& color)
     {
-        m_hiliteTextLabel->backgroundColor = color;
+        m_hiliteTextBackgroundDrawInfo.color = color;
     }
 
     void TextBox::SetHiliteTextBackgroundOpacity(float opacity)
     {
-        m_hiliteTextLabel->backgroundOpacity = opacity;
+        m_hiliteTextBackgroundDrawInfo.opacity = opacity;
     }
 
     void TextBox::SetTextFormat(ComPtrParam<IDWriteTextFormat> format)
@@ -416,31 +411,47 @@ namespace d14engine::uikit
         Panel::OnRendererDrawD2D1LayerHelper(rndr);
 
         auto visibleTextAreaLeftTop = VisibleTextAbsolutePosition();
-        // Text on Mask. Note other children are hidden by default.
-        BeginDrawOnMask(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-visibleTextAreaLeftTop.x, -visibleTextAreaLeftTop.y));
+        // Clamp all characters into visible text area.
+        m_visibleTextMaskStyle.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-visibleTextAreaLeftTop.x, -visibleTextAreaLeftTop.y));
         {
             if (m_textLabel->IsD2D1ObjectVisible())
             {
                 m_textLabel->OnRendererDrawD2D1Object(rndr);
+            }
+            // Draw hilite range's background rectangle manually.
+            {
+                Resu::SOLID_COLOR_BRUSH->SetColor(m_hiliteTextBackgroundDrawInfo.color);
+                Resu::SOLID_COLOR_BRUSH->SetOpacity(m_hiliteTextBackgroundDrawInfo.opacity);
+
+                float hiliteBkgnWidth = m_hiliteTextBackgroundDrawInfo.endOffsetX -
+                                        m_hiliteTextBackgroundDrawInfo.startOffsetX;
+
+                rndr->d2d1DeviceContext->FillRectangle(
+                    m_hiliteTextLabel->SelfCoordToAbsolute(
+                    {
+                        0.0f, 0.0f, hiliteBkgnWidth,
+                        m_hiliteTextLabel->Height()
+                    }),
+                    Resu::SOLID_COLOR_BRUSH.Get());
             }
             if (m_hiliteTextLabel->IsD2D1ObjectVisible())
             {
                 m_hiliteTextLabel->OnRendererDrawD2D1Object(rndr);
             }
         }
-        EndDrawOnMask(rndr->d2d1DeviceContext.Get());
+        m_visibleTextMaskStyle.EndMaskDraw(rndr->d2d1DeviceContext.Get());
     }
 
     void TextBox::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         // Background
-        Resu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(background.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(background.opacity);
 
         Panel::DrawBackground(rndr);
 
         // Text
-        rndr->d2d1DeviceContext->DrawBitmap(maskBitmap.Get(), VisibleTextAbsoluteRect());
+        rndr->d2d1DeviceContext->DrawBitmap(m_visibleTextMaskStyle.bitmap.Get(), VisibleTextAbsoluteRect());
 
         // Indicator
         if (m_showIndicator && m_isIndicatorVisible)
@@ -467,7 +478,7 @@ namespace d14engine::uikit
         m_visibleTextRect.bottom = e.size.height;
 
         // Since Direct2D will render all primitives by subpixel, so do rounding to get better result.
-        LoadMaskBitmap((UINT)(VisibleTextWidth() + 0.5f), (UINT)(VisibleTextHeight() + 0.5f));
+        m_visibleTextMaskStyle.LoadMaskBitmap(Mathu::Rounding(VisibleTextWidth()), Mathu::Rounding(VisibleTextHeight()));
     }
 
     void TextBox::OnChangeThemeHelper(WstrViewParam themeName)
@@ -476,38 +487,38 @@ namespace d14engine::uikit
 
         if (themeName == L"Light")
         {
-            backgroundColor = (D2D1::ColorF)D2D1::ColorF::White;
-            backgroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0xffffff };
+            background.opacity = 1.0f;
 
-            indicatorColor = (D2D1::ColorF)D2D1::ColorF::Black;
+            indicatorColor = D2D1::ColorF{ 0x000000 };
             indicatorOpacity = 1.0f;
 
-            SetTextForegroundColor((D2D1::ColorF)D2D1::ColorF::Black);
+            SetTextForegroundColor(D2D1::ColorF{ 0x000000 });
             SetTextForegroundOpacity(1.0f);
-            SetTextBackgroundColor((D2D1::ColorF)D2D1::ColorF::White);
+            SetTextBackgroundColor(D2D1::ColorF{ 0x000000 });
             SetTextBackgroundOpacity(0.0f);
 
-            SetHiliteTextForegroundColor((D2D1::ColorF)D2D1::ColorF::Black);
+            SetHiliteTextForegroundColor(D2D1::ColorF{ 0x000000 });
             SetHiliteTextForegroundOpacity(1.0f);
-            SetHiliteTextBackgroundColor({ 0.68f, 0.84f, 1.0f, 1.0f });
+            SetHiliteTextBackgroundColor(D2D1::ColorF{ 0xadd6ff });
             SetHiliteTextBackgroundOpacity(1.0f);
         }
         else if (themeName == L"Dark")
         {
-            backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-            backgroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0x000000 };
+            background.opacity = 1.0f;
 
-            indicatorColor = (D2D1::ColorF)D2D1::ColorF::White;
+            indicatorColor = D2D1::ColorF{ 0xffffff };
             indicatorOpacity = 1.0f;
 
-            SetTextForegroundColor({ 0.9f, 0.9f, 0.9f, 1.0f });
+            SetTextForegroundColor(D2D1::ColorF{ 0xe5e5e5 });
             SetTextForegroundOpacity(1.0f);
-            SetTextBackgroundColor((D2D1::ColorF)D2D1::ColorF::Black);
+            SetTextBackgroundColor(D2D1::ColorF{ 0x000000 });
             SetTextBackgroundOpacity(0.0f);
 
-            SetHiliteTextForegroundColor({ 0.9f, 0.9f, 0.9f, 1.0f });
+            SetHiliteTextForegroundColor(D2D1::ColorF{ 0xe5e5e5 });
             SetHiliteTextForegroundOpacity(1.0f);
-            SetHiliteTextBackgroundColor({ 0.15f, 0.31f, 0.47f, 1.0f });
+            SetHiliteTextBackgroundColor(D2D1::ColorF{ 0x264f78 });
             SetHiliteTextBackgroundOpacity(1.0f);
         }
     }

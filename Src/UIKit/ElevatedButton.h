@@ -7,16 +7,17 @@
 
 namespace d14engine::uikit
 {
-    struct ElevatedButton : FilledButton, protected ShadowStyle
+    struct ElevatedButton : FilledButton
     {
         ElevatedButton(
             WstrParam text,
             const D2D1_RECT_F& rect,
             float roundRadius = 0.0f,
-            ComPtrParam<ID2D1Bitmap1> icon = nullptr,
-            const D2D1_COLOR_F& normalColor = { 0.98f, 0.98f, 0.98f, 1.0f },
-            const D2D1_COLOR_F& activeColor = { 0.95f, 0.95f, 0.95f, 1.0f });
+            ComPtrParam<ID2D1Bitmap1> icon = nullptr);
 
+        ShadowStyle shadow = { 0, 0 };
+
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
@@ -32,5 +33,8 @@ namespace d14engine::uikit
         bool OnMouseButtonHelper(MouseButtonEvent& e) override;
 
         bool OnMouseLeaveHelper(MouseMoveEvent& e) override;
+
+    public:
+        void SetEnabled(bool value) override;
     };
 }

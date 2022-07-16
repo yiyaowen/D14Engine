@@ -10,17 +10,14 @@ namespace d14engine::uikit
         WstrParam text,
         D2D_RECT_F rect,
         ComPtrParam<IDWriteTextFormat> format,
-        D2D1_COLOR_F foregroundColor,
-        float foregroundOpacity,
-        D2D1_COLOR_F backgroundColor,
-        float backgroundOpacity)
+        const SolidStyle& foreground,
+        const SolidStyle& background)
         :
         Panel(rect, Resu::SOLID_COLOR_BRUSH),
-        SolidStyle(backgroundColor, backgroundOpacity),
         m_text(text),
         format(format),
-        foregroundColor(foregroundColor),
-        foregroundOpacity(foregroundOpacity)
+        foreground(foreground),
+        background(background)
     {
         m_textMetrics = GetTextLayoutMetrics(text);
     }
@@ -146,8 +143,8 @@ namespace d14engine::uikit
         // There's no need to restore the color and opacity for the brush,
         // since they will always be reset at the beginning of next draw call.
 
-        Resu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(background.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(background.opacity);
 
         Panel::DrawBackground(rndr);
 
@@ -156,8 +153,8 @@ namespace d14engine::uikit
         THROW_IF_FAILED(format->SetTextAlignment(alignment.horizontal));
         THROW_IF_FAILED(format->SetParagraphAlignment(alignment.vertical));
 
-        Resu::SOLID_COLOR_BRUSH->SetColor(foregroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(foregroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(foreground.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(foreground.opacity);
 
         rndr->d2d1DeviceContext->DrawTextW(
             m_text.c_str(),
@@ -175,20 +172,20 @@ namespace d14engine::uikit
 
         if (themeName == L"Light")
         {
-            backgroundColor = (D2D1::ColorF)D2D1::ColorF::White;
-            backgroundOpacity = 0.0f;
+            foreground.color = D2D1::ColorF{ 0x000000 };
+            foreground.opacity = 1.0f;
 
-            foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-            foregroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0x000000 };
+            background.opacity = 0.0f;
         }
         else if (themeName == L"Dark")
         {
-            backgroundColor = (D2D1::ColorF)D2D1::ColorF::Black;
-            backgroundOpacity = 0.0f;
-
             // Don't use full-white. The color should be softer in dark mode.
-            foregroundColor = { 0.9f, 0.9f, 0.9f, 1.0f };
-            foregroundOpacity = 1.0f;
+            foreground.color = D2D1::ColorF{ 0xe5e5e5 };
+            foreground.opacity = 1.0f;
+
+            background.color = D2D1::ColorF{ 0x000000 };
+            background.opacity = 0.0f;
         }
     }
 }

@@ -41,6 +41,12 @@ namespace d14engine::uikit
 
     bool ResizablePanel::OnMouseButtonHelper(MouseButtonEvent& e)
     {
+        OnMouseButtonWrapper(e);
+        return Panel::OnMouseButtonHelper(e);
+    }
+
+    void ResizablePanel::OnMouseButtonWrapper(MouseButtonEvent& e)
+    {
         auto p = e.cursorPoint;
 
         if (e.status.LeftDown())
@@ -71,10 +77,18 @@ namespace d14engine::uikit
                 UnpinApplicationEvents();
             }
         }
-        return Panel::OnMouseButtonHelper(e);
     }
 
     bool ResizablePanel::OnMouseMoveHelper(MouseMoveEvent& e)
+    {
+        if (OnMouseMoveWrapper(e))
+        {
+            return Panel::OnMouseMoveHelper(e);
+        }
+        else return false;
+    }
+
+    bool ResizablePanel::OnMouseMoveWrapper(MouseMoveEvent& e)
     {
         auto p = e.cursorPoint;
 
@@ -306,10 +320,10 @@ namespace d14engine::uikit
         {
             m_isLeftHover = m_isTopHover = m_isRightHover = m_isBottomHover = false;
 
-            if ((p.x <= m_absoluteRect.left && p.y <= m_absoluteRect.top) ||
-                (p.x >= m_absoluteRect.right && p.y >= m_absoluteRect.bottom))
+            if ((p.x < m_absoluteRect.left && p.y < m_absoluteRect.top) ||
+                (p.x > m_absoluteRect.right && p.y > m_absoluteRect.bottom))
             {
-                if (p.x <= m_absoluteRect.left)
+                if (p.x < m_absoluteRect.left)
                 {
                     m_isLeftHover = m_isTopHover = true;
                 }
@@ -321,10 +335,10 @@ namespace d14engine::uikit
                     Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::MainDiagSize);
                 }
             }
-            else if ((p.x <= m_absoluteRect.left && p.y >= m_absoluteRect.bottom) ||
-                        (p.x >= m_absoluteRect.right && p.y <= m_absoluteRect.top))
+            else if ((p.x < m_absoluteRect.left && p.y > m_absoluteRect.bottom) ||
+                     (p.x > m_absoluteRect.right && p.y < m_absoluteRect.top))
             {
-                if (p.x <= m_absoluteRect.left)
+                if (p.x < m_absoluteRect.left)
                 {
                     m_isLeftHover = m_isBottomHover = true;
                 }
@@ -336,9 +350,9 @@ namespace d14engine::uikit
                     Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::BackDiagSize);
                 }
             }
-            else if (p.x <= m_absoluteRect.left || p.x >= m_absoluteRect.right)
+            else if (p.x < m_absoluteRect.left || p.x > m_absoluteRect.right)
             {
-                if (p.x <= m_absoluteRect.left)
+                if (p.x < m_absoluteRect.left)
                 {
                     m_isLeftHover = true;
                 }
@@ -349,9 +363,9 @@ namespace d14engine::uikit
                     Application::APP->MainCursor()->SetIcon(Cursor::IconIndex::HorzSize);
                 }
             }
-            else if (p.y <= m_absoluteRect.top || p.y >= m_absoluteRect.bottom)
+            else if (p.y < m_absoluteRect.top || p.y > m_absoluteRect.bottom)
             {
-                if (p.y <= m_absoluteRect.top)
+                if (p.y < m_absoluteRect.top)
                 {
                     m_isTopHover = true;
                 }
@@ -363,12 +377,15 @@ namespace d14engine::uikit
                 }
             }
         }
+
+        // Decide whether to handle children events in Panel.
+
         if (m_isLeftSizing || m_isTopSizing || m_isRightSizing || m_isBottomSizing ||
             m_skipDeliverNextMouseMoveEventToChildren) // Take sizing into account.
         {
             m_skipDeliverNextMouseMoveEventToChildren = false;
-            return false; // Skip handle children events in Panel.
+            return false;
         }
-        else return Panel::OnMouseMoveHelper(e);
+        else return true;
     }
 }

@@ -5,11 +5,11 @@
 namespace d14engine::uikit
 {
     StrokeStyle::StrokeStyle(
-        float strokeWidth,
-        D2D1_COLOR_F strokeColor,
-        float strokeOpacity)
+        float width,
+        D2D1_COLOR_F color,
+        float opacity)
         :
-        strokeWidth(strokeWidth),
-        strokeColor(strokeColor),
-        strokeOpacity(strokeOpacity) { }
+        width(width),
+        color(color),
+        opacity(opacity) { }
 }

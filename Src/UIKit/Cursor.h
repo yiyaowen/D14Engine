@@ -52,7 +52,7 @@ namespace d14engine::uikit
 
         D2D1_POINT_2F m_displayOffset = { 0.0f, 0.0f };
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D

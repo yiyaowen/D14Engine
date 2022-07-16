@@ -32,6 +32,8 @@ namespace d14engine::uikit
             float horzSpacing = 8.0f,
             float vertSpacing = 8.0f);
 
+        using Layout::UpdateElement;
+
     protected:
         size_t m_horzCellCount = {}, m_vertCellCount = {};
 

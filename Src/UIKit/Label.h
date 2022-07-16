@@ -8,7 +8,7 @@
 
 namespace d14engine::uikit
 {
-    struct Label : Panel, SolidStyle
+    struct Label : Panel
     {
 #define FORMAT_DEFAULT_VALUE Resu::TEXT_FORMATS.at(L"微软雅黑/Light/16")
 
@@ -16,17 +16,15 @@ namespace d14engine::uikit
             WstrParam text,
             D2D_RECT_F rect,
             ComPtrParam<IDWriteTextFormat> format = FORMAT_DEFAULT_VALUE,
-            D2D1_COLOR_F foregroundColor = (D2D1::ColorF)D2D1::ColorF::Black,
-            float foregroundOpacity = 1.0f,
-            D2D1_COLOR_F backgroundColor = (D2D1::ColorF)D2D1::ColorF::White,
-            float backgroundOpacity = 0.0f);
+            const SolidStyle& foreground = { D2D1::ColorF{ 0x000000 }, 1.0f },
+            const SolidStyle& background = { D2D1::ColorF{ 0x000000 }, 0.0f });
 
 #undef FORMAT_DEFAULT_VALUE
 
-        ComPtr<IDWriteTextFormat> format = {};
+        SolidStyle foreground = {};
+        SolidStyle background = {};
 
-        D2D1_COLOR_F foregroundColor = {};
-        float foregroundOpacity = {};
+        ComPtr<IDWriteTextFormat> format = {};
 
         struct Alignment
         {
@@ -45,6 +43,11 @@ namespace d14engine::uikit
         DWRITE_TEXT_METRICS m_textMetrics = {};
 
     public:
+        // To force all characters always displayed in single line, we need to
+        // set right to infinity. It's recommended to use this value instead of
+        // FLT_MAX or others to avoid potential overflow after transformation.
+        constexpr static float Infinity() { return 1e10f; }
+         
         const Wstring& Text();
         void SetText(WstrViewParam text);
         void SetText(Wstring&& text);
@@ -70,7 +73,7 @@ namespace d14engine::uikit
         // TODO: add support for searching multiline text's nearest character gap index.
         size_t GetNearestCharacterGapIndex(float selfCoordOffsetX);
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D

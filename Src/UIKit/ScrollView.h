@@ -9,13 +9,17 @@
 
 namespace d14engine::uikit
 {
-	struct ScrollView : ResizablePanel, protected MaskStyle, SolidStyle, StrokeStyle
+	struct ScrollView : ResizablePanel
 	{
 		ScrollView(const D2D1_RECT_F& rect, ShrdPtrParam<Panel> content = nullptr);
 
 		float deltaPixelsPerScroll = 30.0f;
 
 		void OnInitializeFinish() override;
+
+		MaskStyle mask = { 0, 0 };
+		SolidStyle background = {};
+		StrokeStyle stroke = {};
 
 	public:
 		SharedPtr<Panel> Content();
@@ -30,6 +34,7 @@ namespace d14engine::uikit
 			float externalOffset = {};
 
 			D2D1_COLOR_F color = {};
+			float opacity = {};
 		}
 		scrollBarAppearances[(size_t)ScrollBarState::Count] = {};
 
@@ -57,7 +62,7 @@ namespace d14engine::uikit
 		D2D1_RECT_F HorzBarRect(ScrollBarState state);
 		D2D1_RECT_F VertBarRect(ScrollBarState state);
 		
-	public:
+	protected:
 		// Override interface methods.
 
 		// IDrawObject2D

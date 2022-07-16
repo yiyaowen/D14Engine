@@ -93,6 +93,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -167,24 +168,28 @@
     <ClCompile Include="Src\Renderer\Renderer.cpp" />
     <ClCompile Include="Src\Renderer\StaticSampler.cpp" />
     <ClCompile Include="Src\Renderer\Timer.cpp" />
+    <ClCompile Include="Src\UIKit\Button.cpp" />
     <ClCompile Include="Src\UIKit\AnimationUtils.cpp" />
     <ClCompile Include="Src\UIKit\AnimTextBox.cpp" />
     <ClCompile Include="Src\UIKit\CheckBox.cpp" />
+    <ClCompile Include="Src\UIKit\ClickablePanel.cpp" />
     <ClCompile Include="Src\UIKit\ConstraintLayout.cpp" />
     <ClCompile Include="Src\UIKit\FileExplorer.cpp" />
     <ClCompile Include="Src\UIKit\GridLayout.cpp" />
     <ClCompile Include="Src\UIKit\ListView.cpp" />
     <ClCompile Include="Src\UIKit\OnOffSwitch.cpp" />
     <ClCompile Include="Src\UIKit\ResizablePanel.cpp" />
+    <ClCompile Include="Src\UIKit\SandwichButton.cpp" />
     <ClCompile Include="Src\UIKit\ScrollView.cpp" />
     <ClCompile Include="Src\UIKit\TabGroup.cpp" />
     <ClCompile Include="Src\UIKit\TextBox.cpp" />
     <ClCompile Include="Src\UIKit\StrokeStyle.cpp" />
+    <ClCompile Include="Src\UIKit\ToggleButton.cpp" />
     <ClCompile Include="Src\UIKit\TreeView.cpp" />
     <ClCompile Include="Test\UIKit\TestMain.cpp" />
     <ClCompile Include="Src\UIKit\Application.cpp" />
     <ClCompile Include="Src\UIKit\BitmapUtils.cpp" />
-    <ClCompile Include="Src\UIKit\Button.cpp" />
+    <ClCompile Include="Src\UIKit\FlatButton.cpp" />
     <ClCompile Include="Src\UIKit\ElevatedButton.cpp" />
     <ClCompile Include="Src\UIKit\FilledButton.cpp" />
     <ClCompile Include="Src\UIKit\Cursor.cpp" />
@@ -215,9 +220,11 @@
     <ClInclude Include="Src\Common\RuntimeError.h" />
     <ClInclude Include="Src\Renderer\StaticSampler.h" />
     <ClInclude Include="Src\Renderer\Timer.h" />
+    <ClInclude Include="Src\UIKit\Button.h" />
     <ClInclude Include="Src\UIKit\AnimationUtils.h" />
     <ClInclude Include="Src\UIKit\AnimTextBox.h" />
     <ClInclude Include="Src\UIKit\CheckBox.h" />
+    <ClInclude Include="Src\UIKit\ClickablePanel.h" />
     <ClInclude Include="Src\UIKit\ConstraintLayout.h" />
     <ClInclude Include="Src\UIKit\FileExplorer.h" />
     <ClInclude Include="Src\UIKit\GridLayout.h" />
@@ -225,6 +232,7 @@
     <ClInclude Include="Src\UIKit\ListView.h" />
     <ClInclude Include="Src\UIKit\OnOffSwitch.h" />
     <ClInclude Include="Src\UIKit\ResizablePanel.h" />
+    <ClInclude Include="Src\UIKit\SandwichButton.h" />
     <ClInclude Include="Src\UIKit\ScrollView.h" />
     <ClInclude Include="Src\UIKit\StatefulObject.h" />
     <ClInclude Include="Src\UIKit\StrokeStyle.h" />
@@ -234,7 +242,7 @@
     <ClInclude Include="Misc\DirectX\d3dx12.h" />
     <ClInclude Include="Src\UIKit\Application.h" />
     <ClInclude Include="Src\UIKit\BitmapUtils.h" />
-    <ClInclude Include="Src\UIKit\Button.h" />
+    <ClInclude Include="Src\UIKit\FlatButton.h" />
     <ClInclude Include="Src\UIKit\ElevatedButton.h" />
     <ClInclude Include="Src\UIKit\Event.h" />
     <ClInclude Include="Src\UIKit\FilledButton.h" />
@@ -246,6 +254,7 @@
     <ClInclude Include="Src\UIKit\ShadowStyle.h" />
     <ClInclude Include="Src\UIKit\SolidStyle.h" />
     <ClInclude Include="Src\UIKit\ResourceUtils.h" />
+    <ClInclude Include="Src\UIKit\ToggleButton.h" />
     <ClInclude Include="Src\UIKit\TreeView.h" />
     <ClInclude Include="Src\UIKit\Window.h" />
   </ItemGroup>

@@ -16,6 +16,7 @@ namespace d14engine::uikit
         float horzSpacing,
         float vertSpacing)
         :
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
         Layout(rect),
         m_horzCellCount(horzCellCount),
         m_vertCellCount(vertCellCount),

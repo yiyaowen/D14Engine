@@ -7,7 +7,7 @@ namespace d14engine::uikit
     template<typename State_T, typename StateChangeEvent_T>
     struct StatefulObject
     {
-        using Type = StatefulObject<State_T, StateChangeEvent_T>;
+        using StatefulObjectType = StatefulObject<State_T, StateChangeEvent_T>;
 
         using State = State_T;
         using Event = StateChangeEvent_T;
@@ -32,7 +32,7 @@ namespace d14engine::uikit
             }
         }
 
-        Function<void(Type*,StateChangeEvent_T&)>
+        Function<void(StatefulObjectType*,StateChangeEvent_T&)>
             f_onStateChangeOverride = {},
             f_onStateChangeBefore = {},
             f_onStateChangeAfter = {};

@@ -80,10 +80,7 @@ namespace d14engine::uikit
 
         // Initialize miscellaneous components.
         Resu::Initialize();
-
         Bitmapu::Initialize();
-
-        Window::LoadCommonResources();
 
         // We don't want the cursor to receive any UI event, so only register draw parts.
         (m_cursor = MakeUIObject<Cursor>(Cursor::LoadBasicIconSeries()))->RegisterDrawObjects();

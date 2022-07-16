@@ -202,7 +202,7 @@ namespace d14engine::uikit
 
     protected:
         /*
-        * Introduce OnxxxHelper to solve the inheritance conflicts of
+        * Introduce OnXxxHelper to solve the inheritance conflicts of
         * the 'override', 'before' and 'after' event callback lambdas.
         * 
         * We expect these lambdas to be called in the correct place in the entire inheritance tree.
@@ -268,6 +268,11 @@ namespace d14engine::uikit
     protected:
         bool m_isVisible = true;
 
+        // Note we should distinguish protected m_isEnabled from public appEventFlags:
+        // the former is just a direct flag that switches each time SetEnabled called;
+        // the latter controls whether the panel can actually receive application events.
+        bool m_isEnabled = true;
+
         D2D1_RECT_F m_rect = {};
         
         // Cache this to reduce the computational overhead during rendering.
@@ -279,8 +284,8 @@ namespace d14engine::uikit
         virtual bool IsVisible();
         virtual void SetVisible(bool value);
 
-        bool IsEnabled();
-        void SetEnabled(bool value);
+        virtual bool IsEnabled();
+        virtual void SetEnabled(bool value);
 
         D2D1_SIZE_F Size();
         float Width();
@@ -331,8 +336,11 @@ namespace d14engine::uikit
         D2D1_RECT_F SelfCoordToRelative(const D2D1_RECT_F& rect);
 
         // All transform operations are based on relative coordinate.
+        void Resize(const D2D1_SIZE_F& size);
         void Resize(float width, float height);
+        void Move(const D2D1_POINT_2F& point);
         void Move(float left, float top);
+        void Transform(const D2D1_RECT_F& rect);
         void Transform(float left, float top, float width, float height);
 
         void SetUIObjectPriority(int value);

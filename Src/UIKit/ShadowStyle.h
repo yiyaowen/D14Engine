@@ -7,20 +7,20 @@ namespace d14engine::uikit
     struct ShadowStyle
     {
         ShadowStyle(
-            UINT shadowBitmapWidth,
-            UINT shadowBitmapHeight,
-            float shadowStandardDeviation = 3.0f,
-            D2D1_COLOR_F shadowColor = (D2D1::ColorF)D2D1::ColorF::Gray,
-            D2D1_SHADOW_OPTIMIZATION shadowOptimization = D2D1_SHADOW_OPTIMIZATION_BALANCED);
+            UINT bitmapWidth,
+            UINT bitmapHeight,
+            D2D1_COLOR_F color = D2D1::ColorF{ 0x808080 },
+            float standardDeviation = 3.0f,
+            D2D1_SHADOW_OPTIMIZATION optimization = D2D1_SHADOW_OPTIMIZATION_BALANCED);
 
-        float shadowStandardDeviation = {};
+        D2D1_COLOR_F color = {};
+        float opacity = 1.0f;
 
-        D2D1_COLOR_F shadowColor = {};
-        float shadowOpacity = 1.0f;
+        float standardDeviation = {};
 
-        D2D1_SHADOW_OPTIMIZATION shadowOptimization = {};
+        D2D1_SHADOW_OPTIMIZATION optimization = {};
 
-        ComPtr<ID2D1Bitmap1> shadowBitmap = {};
+        ComPtr<ID2D1Bitmap1> bitmap = {};
 
         void LoadShadowBitmap(UINT width, UINT height);
 

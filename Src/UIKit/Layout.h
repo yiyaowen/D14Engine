@@ -13,17 +13,21 @@ using namespace d14engine::renderer;
 namespace d14engine::uikit
 {
     template<typename GeometryInfo_T>
-    struct Layout : ResizablePanel, SolidStyle, StrokeStyle
+    struct Layout : ResizablePanel
     {
         explicit Layout(const D2D1_RECT_F& rect)
             :
-            ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH),
-            SolidStyle({ 0.9f, 0.9f, 0.9f, 1.0f }),
-            StrokeStyle(1.0f, { 0.8f, 0.8f, 0.8f, 1.0f })
+            Panel(rect, Resu::SOLID_COLOR_BRUSH),
+            ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH)
         {
             SetResizable(false);
+
+            background.opacity = stroke.opacity = 0.0f;
         }
         using GeometryInfo = GeometryInfo_T;
+
+        SolidStyle background = {};
+        StrokeStyle stroke = {};
 
         void AddElement(ShrdPtrParam<Panel> elem, const GeometryInfo_T& geoInfo)
         {
@@ -63,6 +67,12 @@ namespace d14engine::uikit
             }
         }
 
+        GeometryInfo_T* PeekElemGeoInfo(WeakPtrParam<Panel> elem)
+        {
+            auto elemItor = m_elemGeoInfos.find(elem);
+            return (elemItor == m_elemGeoInfos.end()) ? nullptr : &elemItor->second;
+        }
+
     protected:
         using ElementGeometryInfoMap = std::map<WeakPtr<Panel>, GeometryInfo_T, std::owner_less<WeakPtr<Panel>>>;
 
@@ -70,26 +80,26 @@ namespace d14engine::uikit
 
         virtual void UpdateElement(typename ElementGeometryInfoMap::iterator& elemItor) = 0;
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
         void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override
         {
             // Background
-            Resu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-            Resu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
+            Resu::SOLID_COLOR_BRUSH->SetColor(background.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(background.opacity);
 
             Panel::DrawBackground(rndr);
 
             // Outline
-            Resu::SOLID_COLOR_BRUSH->SetColor(strokeColor);
-            Resu::SOLID_COLOR_BRUSH->SetOpacity(strokeOpacity);
+            Resu::SOLID_COLOR_BRUSH->SetColor(stroke.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(stroke.opacity);
 
-            auto innerRect = Mathu::Stretch(m_absoluteRect, { -strokeWidth * 0.5f, -strokeWidth * 0.5f });
+            auto innerRect = Mathu::Stretch(m_absoluteRect, { -stroke.width * 0.5f, -stroke.width * 0.5f });
 
             rndr->d2d1DeviceContext->DrawRoundedRectangle(
-                { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), strokeWidth);
+                { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), stroke.width);
         }
 
         // Panel
@@ -108,17 +118,17 @@ namespace d14engine::uikit
             // display incorrectly when switch between different themems.
             if (themeName == L"Light")
             {
-                backgroundColor = { 0.9f, 0.9f, 0.9f, 1.0f };
+                background.color = D2D1::ColorF{ 0xf2f2f2 };
 
-                strokeWidth = 1.0f;
-                strokeColor = { 0.8f, 0.8f, 0.8f, 1.0f };
+                stroke.width = 1.0f;
+                stroke.color = D2D1::ColorF{ 0xe5e5e5 };
             }
             else if (themeName == L"Dark")
             {
-                backgroundColor = { 0.12f, 0.12f, 0.12f, 1.0f };
+                background.color = D2D1::ColorF{ 0x1f1f1f };
 
-                strokeWidth = 1.0f;
-                strokeColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+                stroke.width = 1.0f;
+                stroke.color = D2D1::ColorF{ 0x1a1a1a };
             }
         }
     };

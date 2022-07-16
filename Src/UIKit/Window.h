@@ -12,22 +12,18 @@ namespace d14engine::uikit
 {
     struct TabGroup;
 
-    // We must place ResizablePanel ahead of those XxxxStyles as their construction might
-    // depends on the initialized base-panel's geometry information (like position, size).
-    struct Window : ResizablePanel, protected MaskStyle, protected ShadowStyle, SolidStyle
+    struct Window : ResizablePanel
     {
-        static ComPtr<ID2D1LinearGradientBrush>
-            g_titleBarPanelBrush,
-            g_decorativeBarBrush;
-
-        static void LoadCommonResources();
-
         Window(WstrParam title, const D2D1_RECT_F& rect);
 
         void OnInitializeFinish() override;
 
+        MaskStyle mask = { 0, 0 };
+        ShadowStyle shadow = { 0, 0 };
+        SolidStyle background = {};
+
     public:
-        // See Panel.h for the reason of an extral OnxxxHelper.
+        // See Panel.h for the reason of an extral OnXxxHelper.
 
         void OnMinimize();
         virtual void OnMinimizeHelper();
@@ -76,6 +72,8 @@ namespace d14engine::uikit
         constexpr static float NonClientAreaHeight() { return 40.0f; }
 
         D2D1_RECT_F ClientAreaRect();
+
+        ComPtr<ID2D1LinearGradientBrush> titleBarPanelBrush = {}, decorativeBarBrush = {};
 
     protected:
         SharedPtr<Label> m_title = {};
@@ -136,7 +134,7 @@ namespace d14engine::uikit
         void HandleMouseButtonForRegisteredTabGroups(MouseButtonEvent& e);
         void HandleMouseMoveForRegisteredTabGroups(MouseMoveEvent& e);
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
@@ -144,12 +142,14 @@ namespace d14engine::uikit
 
         void OnRendererDrawD2D1ObjectHelper(Renderer* rndr) override;
 
+    public:
         // Panel
         float MinimalWidth() override;
 
         float MinimalHeight() override;
 
-        // See Panel.h for the reason of rewriting OnxxxHelper instead of Onxxx.
+    protected:
+        // See Panel.h for the reason of rewriting OnXxxHelper instead of OnXxx.
 
         void OnSizeHelper(SizeEvent& e) override;
 

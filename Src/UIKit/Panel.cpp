@@ -90,12 +90,7 @@ namespace d14engine::uikit
 
     void Panel::OnInitializeFinish()
     {
-        auto originalValue = m_skipChangeChildrenTheme;
-        m_skipChangeChildrenTheme = true;
-
         OnChangeThemeHelper(Application::APP->CurrentThemeName());
-
-        m_skipChangeChildrenTheme = originalValue;
     }
 
     bool Panel::IsHit(Event::Point& p)
@@ -512,7 +507,12 @@ namespace d14engine::uikit
 
     bool Panel::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
-        return false;
+        // Also see OnMouseMoveHelper's implementation: when mouse entered panel,
+        // mouse-enter-event was called followed by mouse-move-event; however,
+        // when mouse left panel, only mouse-leave-event would be called since
+        // panel's hit-test failed at this point. To fix this bug, we decide to
+        // trigger mouse-move-event manually when mouse-leave-event was fired.
+        return OnMouseMoveHelper(e);
     }
 
     bool Panel::OnMouseWheelHelper(MouseWheelEvent& e)
@@ -573,18 +573,13 @@ namespace d14engine::uikit
 
     bool Panel::IsEnabled()
     {
-        return
-            appEventFlags.hitTest ||
-            appEventFlags.mouse.button  ||
-            appEventFlags.mouse.enter   ||
-            appEventFlags.mouse.move    ||
-            appEventFlags.mouse.leave   ||
-            appEventFlags.mouse.wheel   ||
-            appEventFlags.keyboard;
+        return m_isEnabled;
     }
 
     void Panel::SetEnabled(bool value)
     {
+        m_isEnabled = value;
+
         appEventFlags.hitTest = value;
         appEventFlags.mouse.button = value;
         appEventFlags.mouse.enter = value;
@@ -811,32 +806,38 @@ namespace d14engine::uikit
         return { leftTop.x, leftTop.y, rightBottom.x, rightBottom.y };
     }
 
+    void Panel::Resize(const D2D1_SIZE_F& size)
+    {
+        m_rect.right = m_rect.left + size.width;
+        m_rect.bottom = m_rect.top + size.height;
+        UpdateAbsoluteRect();
+    }
+
     void Panel::Resize(float width, float height)
     {
-        width = std::max(width, MinimalWidth());
-        height = std::max(height, MinimalHeight());
+        Resize({ width, height });
+    }
 
-        m_rect.right = m_rect.left + width;
-        m_rect.bottom = m_rect.top + height;
-
+    void Panel::Move(const D2D1_POINT_2F& point)
+    {
+        m_rect = { point.x, point.y, point.x + Width(), point.y + Height() };
         UpdateAbsoluteRect();
     }
 
     void Panel::Move(float left, float top)
     {
-        m_rect = { left, top, left + Width(), top + Height() };
+        Move({ left, top });
+    }
 
+    void Panel::Transform(const D2D1_RECT_F& rect)
+    {
+        m_rect = rect;
         UpdateAbsoluteRect();
     }
 
     void Panel::Transform(float left, float top, float width, float height)
     {
-        width = std::max(width, MinimalWidth());
-        height = std::max(height, MinimalHeight());
-
-        m_rect = { left, top, left + width, top + height };
-
-        UpdateAbsoluteRect();
+        Transform({ left, top, left + width, top + height });
     }
 
     void Panel::SetUIObjectPriority(int value)
@@ -915,7 +916,8 @@ namespace d14engine::uikit
         float width = Width();
         float height = Height();
         // Check whether to trigger sizing event.
-        if (originalSize.width != width || originalSize.height != height)
+        if (Mathu::Rounding(originalSize.width) != Mathu::Rounding(width) ||
+            Mathu::Rounding(originalSize.height) != Mathu::Rounding(height))
         {
             SizeEvent e = {};
             e.size = { width, height };
@@ -925,7 +927,8 @@ namespace d14engine::uikit
         float x = m_absoluteRect.left;
         float y = m_absoluteRect.top;
         // Check whether to trigger movement event.
-        if (originalPosition.x != x || originalPosition.y != y)
+        if (Mathu::Rounding(originalPosition.x) != Mathu::Rounding(x) ||
+            Mathu::Rounding(originalPosition.y) != Mathu::Rounding(y))
         {
             MoveEvent me = {};
             me.position = { m_rect.left, m_rect.top };

@@ -11,15 +11,16 @@ namespace d14engine::uikit
 {
     ScrollView::ScrollView(const D2D1_RECT_F& rect, ShrdPtrParam<Panel> content)
         :
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
         ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH),
-        MaskStyle((UINT)Width(), (UINT)Height()),
-        SolidStyle({ 0.9f, 0.9f, 0.9f, 1.0f }),
-        StrokeStyle(1.0f, { 0.8f, 0.8f, 0.8f, 1.0f }),
+        mask(Mathu::Rounding(Width()), Mathu::Rounding(Height())),
         m_content(content)
     {
         m_takeOverChildrenDrawing = true;
 
         SetResizable(false);
+
+        background.opacity = stroke.opacity = 0.0f;
     }
 
     void ScrollView::OnInitializeFinish()
@@ -158,44 +159,39 @@ namespace d14engine::uikit
         ResizablePanel::OnRendererDrawD2D1LayerHelper(rndr);
 
         // Content on Mask. Note other children are hidden by default.
-        BeginDrawOnMask(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
         {
             if (m_content != nullptr && m_content->IsD2D1ObjectVisible())
             {
                 m_content->OnRendererDrawD2D1Object(rndr);
             }
         }
-        EndDrawOnMask(rndr->d2d1DeviceContext.Get());
+        mask.EndMaskDraw(rndr->d2d1DeviceContext.Get());
     }
 
     void ScrollView::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         // Background
-        Resu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(background.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(background.opacity);
 
         ResizablePanel::DrawBackground(rndr);
 
         // Content
-        rndr->d2d1DeviceContext->DrawBitmap(maskBitmap.Get(), m_absoluteRect);
+        rndr->d2d1DeviceContext->DrawBitmap(mask.bitmap.Get(), m_absoluteRect);
 
         // Outline
-        Resu::SOLID_COLOR_BRUSH->SetColor(strokeColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(strokeOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(stroke.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(stroke.opacity);
 
-        auto innerRect = Mathu::Stretch(m_absoluteRect, { -strokeWidth * 0.5f, -strokeWidth * 0.5f });
+        auto innerRect = Mathu::Stretch(m_absoluteRect, { -stroke.width * 0.5f, -stroke.width * 0.5f });
 
         rndr->d2d1DeviceContext->DrawRoundedRectangle(
-            { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), strokeWidth);
+            { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), stroke.width);
 
         // Scroll Bars
         if (m_content != nullptr)
         {
-            float selfWidth = Width(), selfHeight = Height();
-            float contentWidth = m_content->Width(), contentHeight = m_content->Height();
-
-            Resu::SOLID_COLOR_BRUSH->SetOpacity(1.0f);
-
             auto horzState = ScrollBarState::Idle; // Idle
             if (m_isHorzBarHover) horzState = ScrollBarState::Hover;
             if (m_isHorzBarDown) horzState = ScrollBarState::Down;
@@ -210,6 +206,7 @@ namespace d14engine::uikit
 
             // Horizontal Bar
             Resu::SOLID_COLOR_BRUSH->SetColor(horzSetting.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(horzSetting.opacity);
 
             rndr->d2d1DeviceContext->FillRoundedRectangle(
                 {
@@ -219,9 +216,9 @@ namespace d14engine::uikit
                 },
                 Resu::SOLID_COLOR_BRUSH.Get());
             
-
             // Vertical Bar
             Resu::SOLID_COLOR_BRUSH->SetColor(vertSetting.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(vertSetting.opacity);
 
             rndr->d2d1DeviceContext->FillRoundedRectangle(
                 {
@@ -241,7 +238,7 @@ namespace d14engine::uikit
         // needs to be updated to ensure it is within the valid range.
         SetViewportOffset(m_viewportOffset);
 
-        LoadMaskBitmap((UINT)(e.size.width + 0.5f), (UINT)(e.size.height + 0.5f));
+        mask.LoadMaskBitmap(Mathu::Rounding(e.size.width), Mathu::Rounding(e.size.height));
     }
 
     void ScrollView::OnChangeThemeHelper(WstrViewParam themeName)
@@ -250,64 +247,72 @@ namespace d14engine::uikit
 
         if (themeName == L"Light")
         {
-            backgroundColor = { 0.9f, 0.9f, 0.9f, 1.0f };
-            backgroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0xf2f2f2 };
+            background.opacity = 1.0f;
 
-            strokeWidth = 1.0f;
-            strokeColor = { 0.8f, 0.8f, 0.8f, 1.0f };
-            strokeOpacity = 1.0f;
+            stroke.width = 1.0f;
+
+            stroke.color = D2D1::ColorF{ 0xe5e5e5 };
+            stroke.opacity = 1.0f;
 
             scrollBarAppearances[(size_t)ScrollBarState::Idle] =
             {
                 4.0f, // internal size
                 2.0f, // round radius
                 2.0f, // external offset
-                { 0.8f, 0.8f, 0.8f, 1.0f }
+                D2D1::ColorF{ 0xc2c2c2 }, // color
+                1.0f // opacity
             };
             scrollBarAppearances[(size_t)ScrollBarState::Hover] =
             {
                 8.0f, // internal size
                 4.0f, // round radius
                 2.0f, // external offset
-                { 0.8f, 0.8f, 0.8f, 1.0f }
+                D2D1::ColorF{ 0xc2c2c2 }, // color
+                1.0f // opacity
             };
             scrollBarAppearances[(size_t)ScrollBarState::Down] =
             {
                 8.0f, // internal size
                 4.0f, // round radius
                 2.0f, // external offset
-                { 0.7f, 0.7f, 0.7f, 1.0f }
+                D2D1::ColorF{ 0x8f8f8f }, // color
+                1.0f // opacity
             };
         }
         else if (themeName == L"Dark")
         {
-            backgroundColor = { 0.12f, 0.12f, 0.12f, 1.0f };
-            backgroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0x1f1f1f };
+            background.opacity = 1.0f;
 
-            strokeWidth = 1.0f;
-            strokeColor = { 0.1f, 0.1f, 0.1f, 1.0f };
-            strokeOpacity = 1.0f;
+            stroke.width = 1.0f;
+
+            stroke.color = D2D1::ColorF{ 0x1a1a1a };
+            stroke.opacity = 1.0f;
 
             scrollBarAppearances[(size_t)ScrollBarState::Idle] =
             {
                 4.0f, // internal size
                 2.0f, // round radius
                 2.0f, // external offset
-                { 0.2f, 0.2f, 0.2f, 1.0f }
+                D2D1::ColorF{ 0x3d3d3d }, // color
+                1.0f // opacity
             };
             scrollBarAppearances[(size_t)ScrollBarState::Hover] =
             {
                 8.0f, // internal size
                 4.0f, // round radius
                 2.0f, // external offset
-                { 0.2f, 0.2f, 0.2f, 1.0f }
+                D2D1::ColorF{ 0x3d3d3d }, // color
+                1.0f // opacity
             };
             scrollBarAppearances[(size_t)ScrollBarState::Down] =
             {
                 8.0f, // internal size
                 4.0f, // round radius
                 2.0f, // external offset
-                { 0.3f, 0.3f, 0.3f, 1.0f }
+                D2D1::ColorF{ 0x5c5c5c }, // color
+                1.0f // opacity
             };
         }
     }
@@ -341,7 +346,7 @@ namespace d14engine::uikit
         float selfWidth = Width(), selfHeight = Height();
 
         // Perform viewport motion.
-        if (m_content != nullptr && selfWidth != 0 && selfHeight != 0)
+        if (m_content != nullptr && selfWidth != 0.0f && selfHeight != 0.0f)
         {
             float contentWidth = m_content->Width(), contentHeight = m_content->Height();
             float horzRatio = contentWidth / selfWidth, vertRatio = contentHeight / selfHeight;
@@ -363,10 +368,10 @@ namespace d14engine::uikit
         }
         // Update scroll bar state.
         {
-            m_isVertBarHover = Mathu::IsOverlapped(
+            m_isVertBarHover = Mathu::IsInside(
                 p, VertBarRect(m_isVertBarHover ? ScrollBarState::Hover : ScrollBarState::Idle));
 
-            m_isHorzBarHover = Mathu::IsOverlapped(
+            m_isHorzBarHover = Mathu::IsInside(
                 p, HorzBarRect(m_isHorzBarHover ? ScrollBarState::Hover : ScrollBarState::Idle));
         }
         return ResizablePanel::OnMouseMoveHelper(e);

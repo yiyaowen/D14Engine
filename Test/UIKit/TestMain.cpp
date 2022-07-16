@@ -15,10 +15,12 @@ using namespace d14engine::renderer;
 #include "UIKit/ElevatedButton.h"
 #include "UIKit/FilledButton.h"
 #include "UIKit/GridLayout.h"
+#include "UIKit/ListView.h"
 #include "UIKit/OnOffSwitch.h"
 #include "UIKit/OutlinedButton.h"
 #include "UIKit/ScrollView.h"
 #include "UIKit/TabGroup.h"
+#include "UIKit/ToggleButton.h"
 #include "UIKit/Window.h"
 using namespace d14engine::uikit;
 
@@ -75,16 +77,13 @@ int wmain(int argc, wchar_t* argv[])
 
             auto mainLayout = MakeManagedUIObject<ConstraintLayout>(w, w->ClientAreaRect());
 
-            mainLayout->backgroundOpacity = 0.0f;
-            mainLayout->strokeOpacity = 0.0f;
-
             mainLayout->f_onParentSizeAfter = [&](Panel* p, SizeEvent& e)
             {
                 auto parent = p->Parent();
                 if (!parent.expired())
                 {
-                    auto wptr = std::static_pointer_cast<Window>(parent.lock());
-                    p->Resize(wptr->Width(), wptr->ClientAreaHeight());
+                    auto wptr = std::dynamic_pointer_cast<Window>(parent.lock());
+                    if (wptr != nullptr) p->Resize(wptr->Width(), wptr->ClientAreaHeight());
                 }
             };
 
@@ -93,31 +92,32 @@ int wmain(int argc, wchar_t* argv[])
             auto tabGroup = MakeUIObject<TabGroup>(D2D1_RECT_F{ 0.0f, 0.0f, 300.0f, 0.0f });
 
             tabGroup->isLeftResizable = true;
+            tabGroup->SetCardWidth(120);
 
             auto scrollView = MakeUIObject<ScrollView>(D2D1_RECT_F{});
+            auto btnListView = MakeUIObject<ListView>(D2D1_RECT_F{});
 
             tabGroup->AppendPage({ MakeUIObject<Label>(L"新标签页", D2D1_RECT_F{}), scrollView });
-
+            tabGroup->AppendPage({ MakeUIObject<Label>(L"按钮列表", D2D1_RECT_F{}), btnListView });
             tabGroup->SelectPage(0);
-            tabGroup->SetCardWidth(200);
 
             ConstraintLayout::GeometryInfo mainGeoInfo = {};
 
             mainGeoInfo.Right.ToRight = 0.0f;
-            mainGeoInfo.Top.ToTop = 50.0f;
+            mainGeoInfo.Top.ToTop = 40.0f;
             mainGeoInfo.Bottom.ToBottom = 0.0f;
             mainGeoInfo.keepHeight = false;
 
             mainLayout->AddElement(tabGroup, mainGeoInfo);
 
-            auto sideLayout = MakeUIObject<GridLayout>(tabGroup->SelfCoordRect(), 4, 8, 12.0f, 12.0f);
-
-            scrollView->SetContent(sideLayout);
-
             tabGroup->maximalWidth = tabGroup->Width();
             tabGroup->maximalHeight = tabGroup->Height();
 
-            // Miscellaneous Widgets
+            // Scroll View
+
+            auto sideLayout = MakeUIObject<GridLayout>(tabGroup->SelfCoordRect(), 4, 8, 12.0f, 12.0f);
+
+            scrollView->SetContent(sideLayout);
 
             auto l = MakeUIObject<Label>(L"名称", D2D1_RECT_F{});
 
@@ -147,7 +147,7 @@ int wmain(int argc, wchar_t* argv[])
 
             tb->SetText(L"输入窗口标题");
 
-            auto b = MakeUIObject<Button>(L"编辑", D2D1_RECT_F{}, 5.0f);
+            auto b = MakeUIObject<FlatButton>(L"编辑", D2D1_RECT_F{}, 5.0f);
 
             sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 0, 2 };
@@ -195,7 +195,7 @@ int wmain(int argc, wchar_t* argv[])
 
             sideLayout->AddElement(oos, sideGeoInfo);
 
-            oos->f_onStateChangeAfter = [&](OnOffSwitch::Type* oos, OnOffSwitch::Event& e)
+            oos->f_onStateChangeAfter = [&](OnOffSwitch::StatefulObjectType* oos, OnOffSwitch::StatefulObjectType::Event& e)
             {
                 if (e.SwitchOff())
                 {
@@ -211,21 +211,42 @@ int wmain(int argc, wchar_t* argv[])
 
             auto dscb = MakeUIObject<CheckBox>();
 
+            dscb->f_onStateChangeAfter =
+                [&, bptr = (WeakPtr<FlatButton>)b, obptr = (WeakPtr<OutlinedButton>)ob,
+                fbptr = (WeakPtr<FilledButton>)fb, ebptr = (WeakPtr<ElevatedButton>)eb]
+                (CheckBox::StatefulObjectType* cb, CheckBox::StatefulObjectType::Event& e)
+            { 
+                if (e.Unchecked())
+                {
+                    if (!bptr.expired()) bptr.lock()->SetEnabled(true);
+                    if (!obptr.expired()) obptr.lock()->SetEnabled(true);
+                    if (!fbptr.expired()) fbptr.lock()->SetEnabled(true);
+                    if (!ebptr.expired()) ebptr.lock()->SetEnabled(true);
+                }
+                else if (e.Checked())
+                {
+                    if (!bptr.expired()) bptr.lock()->SetEnabled(false);
+                    if (!obptr.expired()) obptr.lock()->SetEnabled(false);
+                    if (!fbptr.expired()) fbptr.lock()->SetEnabled(false);
+                    if (!ebptr.expired()) ebptr.lock()->SetEnabled(false);
+                }
+            };
+
             sideGeoInfo.isFixedSize = true;
             sideGeoInfo.axis.x = { 0, 1 };
             sideGeoInfo.axis.y = { 4, 1 };
 
             sideLayout->AddElement(dscb, sideGeoInfo);
 
-            auto twoStateLabel = MakeUIObject<Label>(L"2-state check box", D2D1_RECT_F{});
+            auto doubleStateLabel = MakeUIObject<Label>(L"禁用按钮", D2D1_RECT_F{});
 
-            twoStateLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
+            doubleStateLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
 
             sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 1, 3 };
             sideGeoInfo.axis.y = { 4, 1 };
 
-            sideLayout->AddElement(twoStateLabel, sideGeoInfo);
+            sideLayout->AddElement(doubleStateLabel, sideGeoInfo);
 
             auto tscb = MakeUIObject<CheckBox>(true);
 
@@ -235,15 +256,49 @@ int wmain(int argc, wchar_t* argv[])
 
             sideLayout->AddElement(tscb, sideGeoInfo);
 
-            auto threeStateLabel = MakeUIObject<Label>(L"3-state check box", D2D1_RECT_F{});
+            auto tripleStateLabel = MakeUIObject<Label>(L"Triple-State", D2D1_RECT_F{});
 
-            threeStateLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
+            tripleStateLabel->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
 
             sideGeoInfo.isFixedSize = false;
             sideGeoInfo.axis.x = { 1, 3 };
             sideGeoInfo.axis.y = { 5, 1 };
 
-            sideLayout->AddElement(threeStateLabel, sideGeoInfo);
+            sideLayout->AddElement(tripleStateLabel, sideGeoInfo);
+
+            auto toggleButton = MakeUIObject<ToggleButton>(L"状态", D2D1_RECT_F{}, 5.0f);
+
+            sideGeoInfo.axis.x = { 0, 2 };
+            sideGeoInfo.axis.y = { 6, 1 };
+
+            sideLayout->AddElement(toggleButton, sideGeoInfo);
+
+            // Button List View
+
+            for (int i = 0; i < 10; ++i)
+            {
+                auto btnItem = MakeUIObject<FlatButton>(
+                    L"Item " + std::to_wstring(i), D2D1_RECT_F{ 0.0f, 0.0f, 0.0f, 40.0f });
+
+                btnItem->f_onMouseEnterAfter = [&, i](Panel* p, MouseMoveEvent& e)
+                {
+                    auto b = dynamic_cast<Button*>(p);
+                    if (b != nullptr) b->textLabel->SetText(L"Item " + std::to_wstring(i) + L" / hovered");
+                    return false;
+                };
+                btnItem->f_onMouseButtonReleaseAfter = [&, i](ClickablePanel* p, ClickablePanel::Event& e)
+                {
+                    ((Button*)p)->textLabel->SetText(L"Item " + std::to_wstring(i) + L" / clicked");
+                };
+                btnItem->f_onMouseLeaveAfter = [&, i](Panel* p, MouseMoveEvent& e)
+                {
+                    auto b = dynamic_cast<Button*>(p);
+                    if (b != nullptr) b->textLabel->SetText(L"Item " + std::to_wstring(i));
+                    return false;
+                };
+
+                btnListView->AppendItem(btnItem);
+            }
         });
     }
     catch (RuntimeError& e)

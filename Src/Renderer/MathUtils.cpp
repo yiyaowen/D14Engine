@@ -4,15 +4,14 @@
 
 namespace d14engine::renderer
 {
-    XMFLOAT4X4 MathUtils::IdentityFloat4x4()
+    int MathUtils::Ceiling(float value)
     {
-        return
-        {
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 1.0f
-        };
+        return (int)(value + 1.0f);
+    }
+
+    int MathUtils::Rounding(float value)
+    {
+        return (int)(value + 0.5f);
     }
 
     bool MathUtils::IsInside(const D2D1_POINT_2F& p, const D2D1_RECT_F& r)
@@ -103,5 +102,16 @@ namespace d14engine::renderer
     D2D1_RECT_F MathUtils::MoveVertex(const D2D1_RECT_F& rect, const D2D1_RECT_F& delta)
     {
         return { rect.left + delta.left, rect.top + delta.top, rect.right + delta.right, rect.bottom + delta.bottom };
+    }
+
+    XMFLOAT4X4 MathUtils::IdentityFloat4x4()
+    {
+        return
+        {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        };
     }
 }

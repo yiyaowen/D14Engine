@@ -13,9 +13,8 @@ namespace d14engine::uikit
 {
     TabGroup::TabGroup(const D2D1_RECT_F& rect)
         :
-        ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH),
-        SolidStyle({ 0.9f, 0.9f, 0.9f, 1.0f }),
-        StrokeStyle(1.0f, { 0.8f, 0.8f, 0.8f, 1.0f })
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
+        ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH)
     {
         m_takeOverChildrenDrawing = true;
 
@@ -81,7 +80,7 @@ namespace d14engine::uikit
             // since only current active page's content will be drawn.
             page.content->SetEnabled(false);
             // Config as center UI object immediately after inserted.
-            page.content->Transform(0.0f, 0.0f, Width(), Height());
+            page.content->Transform(SelfCoordRect());
 
             if (m_currActivePageIndex >= 0 && m_currActivePageIndex < m_pages.size())
             {
@@ -177,7 +176,7 @@ namespace d14engine::uikit
         auto& activeSetting = tabAppearances[(size_t)TabState::Active];
 
         m_activeCardShadowStyle.LoadShadowBitmap(
-            (UINT)(m_cardWidth + 0.5f), (UINT)(activeSetting.card.height + 0.5f));
+            Mathu::Rounding(m_cardWidth), Mathu::Rounding(activeSetting.card.height));
     }
 
     TabGroup::TabState TabGroup::GetTabState(size_t index)
@@ -224,7 +223,7 @@ namespace d14engine::uikit
             // so it doesn't occupy a complete rectangle area.
             cardRect.bottom = m_absoluteRect.top;
             // Make sure active-card can cover Panel's stroke-boundary.
-            return Mathu::Offset(cardRect, { 0.0f, strokeWidth });
+            return Mathu::Offset(cardRect, { 0.0f, stroke.width });
         }
         else return cardRect;
     }
@@ -320,10 +319,10 @@ namespace d14engine::uikit
 
             // Color Scheme & Text Format
             page.title->format = setting.format;
-            page.title->foregroundColor = setting.foregroundColor;
-            page.title->foregroundOpacity = setting.foregroundOpacity;
-            page.title->backgroundColor = setting.backgroundColor;
-            page.title->backgroundOpacity = setting.backgroundOpacity;
+            page.title->foreground.color = setting.foregroundColor;
+            page.title->foreground.opacity = setting.foregroundOpacity;
+            page.title->background.color = setting.color;
+            page.title->background.opacity = setting.opacity;
 
             page.title->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
             page.title->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
@@ -345,8 +344,8 @@ namespace d14engine::uikit
         auto& colorScheme = setting.colorSchemes[(size_t)state];
 
         // Background
-        Resu::SOLID_COLOR_BRUSH->SetColor(colorScheme.backgroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(colorScheme.backgroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(colorScheme.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(colorScheme.opacity);
 
         rndr->d2d1DeviceContext->FillRoundedRectangle(
             {
@@ -367,14 +366,14 @@ namespace d14engine::uikit
             { closeXRect.left, closeXRect.top },
             { closeXRect.right, closeXRect.bottom },
             Resu::SOLID_COLOR_BRUSH.Get(),
-            setting.strokeWidth);
+            setting.width);
 
         // Back Diagonal
         rndr->d2d1DeviceContext->DrawLine(
             { closeXRect.right, closeXRect.top },
             { closeXRect.left, closeXRect.bottom },
             Resu::SOLID_COLOR_BRUSH.Get(),
-            setting.strokeWidth);
+            setting.width);
     }
 
     void TabGroup::TriggerPagePromoteEvent(MouseMoveEvent& e)
@@ -386,7 +385,9 @@ namespace d14engine::uikit
             w->MoveTopmost();
 
             // We decide the window should be able to demote back again.
-            w->RegisterTabGroup(std::static_pointer_cast<TabGroup>(shared_from_this()));
+            w->RegisterTabGroup(std::dynamic_pointer_cast<TabGroup>(shared_from_this()));
+
+            // TODO: support promote to child window (always root for the time being).
             w->RegisterDrawObjects();
             w->RegisterApplicationEvents();
 
@@ -575,8 +576,8 @@ namespace d14engine::uikit
         }
         // Background
         {
-            Resu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-            Resu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
+            Resu::SOLID_COLOR_BRUSH->SetColor(background.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(background.opacity);
 
             ResizablePanel::DrawBackground(rndr);
         }
@@ -587,13 +588,13 @@ namespace d14engine::uikit
         }
         // Outline
         {
-            Resu::SOLID_COLOR_BRUSH->SetColor(strokeColor);
-            Resu::SOLID_COLOR_BRUSH->SetOpacity(strokeOpacity);
+            Resu::SOLID_COLOR_BRUSH->SetColor(stroke.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(stroke.opacity);
 
-            auto innerRect = Mathu::Stretch(m_absoluteRect, { -strokeWidth * 0.5f, -strokeWidth * 0.5f });
+            auto innerRect = Mathu::Stretch(m_absoluteRect, { -stroke.width * 0.5f, -stroke.width * 0.5f });
 
             rndr->d2d1DeviceContext->DrawRoundedRectangle(
-                { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), strokeWidth);
+                { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), stroke.width);
         }
         // Foreground of Active-card
         if (m_currActivePageIndex >= 0 && m_currActivePageIndex < m_pages.size())
@@ -601,7 +602,7 @@ namespace d14engine::uikit
             auto& cardSetting = tabAppearances[(size_t)TabState::Active].card;
 
             rndr->d2d1DeviceContext->DrawBitmap(
-                m_activeCardShadowStyle.shadowBitmap.Get(),
+                m_activeCardShadowStyle.bitmap.Get(),
                 CardRect(m_currActivePageIndex),
                 cardSetting.opacity);
         }
@@ -630,7 +631,7 @@ namespace d14engine::uikit
                             { cardRect.right, lineTop },
                             { cardRect.right, lineBottom },
                             Resu::SOLID_COLOR_BRUSH.Get(),
-                            tabSeparatorStyle.strokeWidth);
+                            tabSeparatorStyle.width);
                     }
                 }
                 // Draw icon, title && close-x for all tabs.
@@ -670,7 +671,7 @@ namespace d14engine::uikit
             auto& page = m_pages[cardIndex];
 
             // Keep content panel.
-            page.content->Transform(0.0f, 0.0f, e.size.width, e.size.height);
+            page.content->Transform(SelfCoordRect());
 
             // Update title-label.
             auto titleRect = AbsoluteToSelfCoord(TitleRect(cardIndex));
@@ -689,15 +690,18 @@ namespace d14engine::uikit
 
         if (themeName == L"Light")
         {
-            backgroundColor = { 0.9f, 0.9f, 0.9f, 1.0f };
+            background.color = D2D1::ColorF{ 0xf2f2f2 };
+            background.opacity = 1.0f;
 
-            strokeWidth = 1.0f;
-            strokeColor = { 0.8f, 0.8f, 0.8f, 1.0f };
+            stroke.width = 1.0f;
+
+            stroke.color = D2D1::ColorF{ 0xe5e5e5 };
+            stroke.opacity = 1.0f;
 
             tabSeparatorStyle =
             {
                 16.0f, // height
-                (D2D1::ColorF)D2D1::ColorF::Gray, // color
+                D2D1::ColorF{ 0x808080 }, // color
                 1.0f, // opacity
                 1.0f // stroke width
             };
@@ -706,7 +710,7 @@ namespace d14engine::uikit
                 { // card appearance
                     32.0f, // height
                     8.0f, // round radius
-                    { 0.9f, 0.9f, 0.9f, 1.0f }, // color
+                    D2D1::ColorF{ 0xf2f2f2 }, // color
                     1.0f // opacity
                 },
                 // icon appearance
@@ -715,9 +719,9 @@ namespace d14engine::uikit
                     { 80.0f, 20.0f }, // size
                     20.0f, // left offset
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                    D2D1::ColorF{ 0x000000 }, // foreground color
                     1.0, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::White, // background color
+                    D2D1::ColorF{ 0x000000 }, // background color
                     0.0f // background opacity
                 },
                 { // close-x appearance
@@ -726,20 +730,20 @@ namespace d14engine::uikit
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                        D2D1::ColorF{ 0x000000 }, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.8f, 0.8f, 0.8f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0x000000 }, // background color
+                        0.1f, // background opacity
                     },{ // down
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.7f, 0.7f, 0.7f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0x000000 }, // background color
+                        0.2f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
@@ -749,7 +753,7 @@ namespace d14engine::uikit
                 { // card appearance
                     24.0f, // height
                     8.0f, // round radius
-                    { 0.9f, 0.9f, 0.9f, 1.0f }, // color
+                    D2D1::ColorF{ 0xcccccc }, // color
                     1.0f // opacity
                 },
                 // icon appearance
@@ -758,9 +762,9 @@ namespace d14engine::uikit
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                    D2D1::ColorF{ 0x000000 }, // foreground color
                     1.0, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::White, // background color
+                    D2D1::ColorF{ 0x000000 }, // background color
                     0.0f // background opacity
                 },
                 { // close-x appearance
@@ -769,20 +773,20 @@ namespace d14engine::uikit
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                        D2D1::ColorF{ 0x000000 }, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.8f, 0.8f, 0.8f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0x000000 }, // background color
+                        0.1f, // background opacity
                     },{ // down
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.7f, 0.7f, 0.7f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0x000000 }, // background color
+                        0.2f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
@@ -792,7 +796,7 @@ namespace d14engine::uikit
                 { // card appearance
                     24.0f, // height
                     8.0f, // round radius
-                    { 0.8f, 0.8f, 0.8f, 1.0f }, // color
+                    D2D1::ColorF{ 0xe5e5e5 }, // color
                     1.0f // opacity
                 },
                 // icon appearance
@@ -801,9 +805,9 @@ namespace d14engine::uikit
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                    D2D1::ColorF{ 0x000000 }, // foreground color
                     1.0, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::White, // background color
+                    D2D1::ColorF{ 0x000000 }, // background color
                     0.0f // background opacity
                 },
                 { // close-x appearance
@@ -812,41 +816,44 @@ namespace d14engine::uikit
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                        D2D1::ColorF{ 0x000000 }, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.8f, 0.8f, 0.8f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0x000000 }, // background color
+                        0.1f, // background opacity
                     },{ // down
-                        (D2D1::ColorF)D2D1::ColorF::Black, // foreground color
+                        D2D1::ColorF{ 0x000000 }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.7f, 0.7f, 0.7f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0x000000 }, // background color
+                        0.2f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
             };
             maskStyleWhenBelowDragWindow =
             {
-                { 0.68f, 0.84f, 1.0f, 1.0f }, // color
+                D2D1::ColorF{ 0xadd6ff }, // color
                 0.5f // opacity
             };
         }
         else if (themeName == L"Dark")
         {
-            backgroundColor = { 0.12f, 0.12f, 0.12f, 1.0f };
+            background.color = D2D1::ColorF{ 0x1f1f1f };
+            background.opacity = 1.0f;
 
-            strokeWidth = 1.0f;
-            strokeColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+            stroke.width = 1.0f;
+
+            stroke.color = D2D1::ColorF{ 0x1a1a1a };
+            stroke.opacity = 1.0f;
 
             tabSeparatorStyle =
             {
                 16.0f, // height
-                (D2D1::ColorF)D2D1::ColorF::Gray, // color
+                D2D1::ColorF{ 0x808080 }, // color
                 1.0f, // opacity
                 1.0f // stroke width
             };
@@ -855,7 +862,7 @@ namespace d14engine::uikit
                 { // card appearance
                     32.0f, // height
                     8.0f, // round radius
-                    { 0.12f, 0.12f, 0.12f, 1.0f }, // color
+                    D2D1::ColorF{ 0x1f1f1f }, // color
                     1.0f // opacity
                 },
                 // icon appearance
@@ -864,9 +871,9 @@ namespace d14engine::uikit
                     { 80.0f, 20.0f }, // size
                     20.0f, // left offset
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                    D2D1::ColorF{ 0xe5e5e5 }, // foreground color
                     1.0, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                    D2D1::ColorF{ 0x000000 }, // background color
                     0.0f // background opacity
                 },
                 { // close-x appearance
@@ -875,20 +882,20 @@ namespace d14engine::uikit
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                        D2D1::ColorF{ 0x000000 }, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.3f, 0.3f, 0.3f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0xffffff }, // background color
+                        0.2f, // background opacity
                     },{ // down
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.4f, 0.4f, 0.4f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0xffffff }, // background color
+                        0.3f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
@@ -898,7 +905,7 @@ namespace d14engine::uikit
                 { // card appearance
                     24.0f, // height
                     8.0f, // round radius
-                    { 0.12f, 0.12f, 0.12f, 1.0f }, // color
+                    D2D1::ColorF{ 0x424242 }, // color
                     1.0f // opacity
                 },
                 // icon appearance
@@ -907,9 +914,9 @@ namespace d14engine::uikit
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                    D2D1::ColorF{ 0xe5e5e5 }, // foreground color
                     1.0, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                    D2D1::ColorF{ 0x000000 }, // background color
                     0.0f // background opacity
                 },
                 { // close-x appearance
@@ -918,20 +925,20 @@ namespace d14engine::uikit
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                        D2D1::ColorF{ 0x000000 }, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.3f, 0.3f, 0.3f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0xffffff }, // background color
+                        0.2f, // background opacity
                     },{ // down
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.4f, 0.4f, 0.4f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0xffffff }, // background color
+                        0.3f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
@@ -941,7 +948,7 @@ namespace d14engine::uikit
                 { // card appearance
                     24.0f, // height
                     8.0f, // round radius
-                    { 0.25f, 0.25f, 0.25f, 1.0f }, // color
+                    D2D1::ColorF{ 0x1a1a1a }, // color
                     1.0f // opacity
                 },
                 // icon appearance
@@ -950,9 +957,9 @@ namespace d14engine::uikit
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                    D2D1::ColorF{ 0xe5e5e5 }, // foreground color
                     1.0, // foreground opacity
-                    (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                    D2D1::ColorF{ 0x000000 }, // background color
                     0.0f // background opacity
                 },
                 { // close-x appearance
@@ -961,27 +968,27 @@ namespace d14engine::uikit
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
                     {{ // idle
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        (D2D1::ColorF)D2D1::ColorF::Black, // background color
+                        D2D1::ColorF{ 0x000000 }, // background color
                         0.0f, // background opacity
                     },{ // hover
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.3f, 0.3f, 0.3f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0xffffff }, // background color
+                        0.2f, // background opacity
                     },{ // down
-                        { 0.9f, 0.9f, 0.9f, 1.0f }, // foreground color
+                        D2D1::ColorF{ 0xffffff }, // foreground color
                         1.0f, // foreground opacity
-                        { 0.4f, 0.4f, 0.4f, 1.0f }, // background color
-                        1.0f, // background opacity
+                        D2D1::ColorF{ 0xffffff }, // background color
+                        0.3f, // background opacity
                     }},
                     1.0f, // stroke width
                 }
             };
             maskStyleWhenBelowDragWindow =
             {
-                { 0.15f, 0.31f, 0.47f, 1.0f }, // color
+                D2D1::ColorF{ 0x264f78 }, // color
                 0.5f // opacity
             };
         }

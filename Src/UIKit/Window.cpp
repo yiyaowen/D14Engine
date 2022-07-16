@@ -10,66 +10,23 @@ using namespace d14engine::renderer;
 
 namespace d14engine::uikit
 {
-    ComPtr<ID2D1LinearGradientBrush>
-        Window::g_titleBarPanelBrush = {},
-        Window::g_decorativeBarBrush = {};
-
-    void Window::LoadCommonResources()
-    {
-        // Title panel, linear gradient, bottom -> top, 80% B -> 95% B.
-        {
-            ComPtr<ID2D1GradientStopCollection> coll;
-            D2D1_GRADIENT_STOP stop[] =
-            {
-                { 0.0f, { 0.8f, 0.8f, 0.8f, 1.0f } },
-                { 1.0f, { 0.95f, 0.95f, 0.95f, 1.0f } }
-            };
-            THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                CreateGradientStopCollection(stop, _countof(stop), &coll));
-
-            THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                CreateLinearGradientBrush({}, coll.Get(), &g_titleBarPanelBrush));
-        }
-        // Decorative bar, linear gradient, left -> right, Crimson -> Firebrick.
-        {
-            ComPtr<ID2D1GradientStopCollection> coll;
-            D2D1_GRADIENT_STOP stop[] =
-            {
-                { 0.0f, (D2D1::ColorF)D2D1::ColorF::Crimson },
-                { 1.0f, (D2D1::ColorF)D2D1::ColorF::Firebrick }
-            };
-            THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                CreateGradientStopCollection(stop, _countof(stop), &coll));
-
-            THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                CreateLinearGradientBrush({}, coll.Get(), &g_decorativeBarBrush));
-        }
-    }
-
     Window::Window(WstrParam title, const D2D1_RECT_F& rect)
         :
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
         ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH),
-        MaskStyle((UINT)Width(), (UINT)Height()),
-        SolidStyle({ 0.95f, 0.95f, 0.95f, 1.0f }),
-        ShadowStyle((UINT)Width(), (UINT)Height(), 3.0f, { 0.7f, 0.7f, 0.7f, 1.0f })
+        mask(Mathu::Rounding(Width()), Mathu::Rounding(Height())),
+        shadow(Mathu::Rounding(Width()), Mathu::Rounding(Height()))
     {
         // All children will be drawn on the mask instead of in Panel.
         m_takeOverChildrenDrawing = true;
 
         // Create title bar text label.
-        m_title = MakeUIObject<Label>(
-            title, CenterTitleRect(), Resu::TEXT_FORMATS.at(L"微软雅黑/Light/16"));
+        m_title = MakeUIObject<Label>(title, CenterTitleRect(), Resu::TEXT_FORMATS.at(L"微软雅黑/Light/16"));
 
         m_title->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
 
         // Note p is m_title. Also see Panel's OnParentSize for details.
-        m_title->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e)
-        {
-            auto centerRect = CenterTitleRect();
-            p->Resize( // Keep in horizontal center.
-                      centerRect.right - centerRect.left,
-                      centerRect.bottom - centerRect.top);
-        };
+        m_title->f_onParentSizeBefore = [this](Panel* p, SizeEvent& e) { p->Transform(CenterTitleRect()); };
     }
 
     void Window::OnInitializeFinish()
@@ -300,8 +257,8 @@ namespace d14engine::uikit
                 auto parent = p->Parent();
                 if (!parent.expired())
                 {
-                    auto wptr = std::static_pointer_cast<Window>(parent.lock());
-                    p->Resize(wptr->Width(), wptr->ClientAreaHeight());
+                    auto wptr = std::dynamic_pointer_cast<Window>(parent.lock());
+                    if (wptr != nullptr) p->Resize(wptr->Width(), wptr->ClientAreaHeight());
                 }
             };
             uiobj->Transform(0.0f, Window::NonClientAreaHeight(), Width(), ClientAreaHeight());
@@ -334,7 +291,7 @@ namespace d14engine::uikit
                 // Update tab-group's associated-window field.
                 if (m_isDragTitleBar)
                 {
-                    tg->temporaryAssociatedWindow = std::static_pointer_cast<Window>(shared_from_this());
+                    tg->temporaryAssociatedWindow = std::dynamic_pointer_cast<Window>(shared_from_this());
                 }
                 else tg->temporaryAssociatedWindow.reset();
 
@@ -398,21 +355,21 @@ namespace d14engine::uikit
         if (temporaryAssociatedTabGroup.expired())
         {
             // Shape of Shadow
-            BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
+            shadow.BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
             {
                 // The color of shadow canvas can be designated casually,
                 // where alpha channel will decide the shape of shadow.
                 rndr->d2d1DeviceContext->Clear((D2D1::ColorF)D2D1::ColorF::Black);
             }
-            EndDrawOnShadow(rndr->d2d1DeviceContext.Get());
+            shadow.EndDrawOnShadow(rndr->d2d1DeviceContext.Get());
         }
         // Content on Mask
-        BeginDrawOnMask(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
         {
             // Background
             {
-                Resu::SOLID_COLOR_BRUSH->SetColor(backgroundColor);
-                Resu::SOLID_COLOR_BRUSH->SetOpacity(backgroundOpacity);
+                Resu::SOLID_COLOR_BRUSH->SetColor(background.color);
+                Resu::SOLID_COLOR_BRUSH->SetOpacity(background.opacity);
 
                 ResizablePanel::DrawBackground(rndr);
             }
@@ -421,20 +378,20 @@ namespace d14engine::uikit
                 // Panel
                 auto tpr = TitlePanelRect();
 
-                g_titleBarPanelBrush->SetStartPoint({ tpr.left, tpr.bottom });
-                g_titleBarPanelBrush->SetEndPoint({ tpr.left, tpr.top });
+                titleBarPanelBrush->SetStartPoint({ tpr.left, tpr.bottom });
+                titleBarPanelBrush->SetEndPoint({ tpr.left, tpr.top });
 
-                rndr->d2d1DeviceContext->FillRectangle(tpr, g_titleBarPanelBrush.Get());
+                rndr->d2d1DeviceContext->FillRectangle(tpr, titleBarPanelBrush.Get());
 
                 // Title text had been drawn as child.
 
                 // Decorative Bar
                 auto dbr = DecorativeBarRect();
 
-                g_decorativeBarBrush->SetStartPoint({ dbr.left, dbr.top });
-                g_decorativeBarBrush->SetEndPoint({ dbr.right, dbr.top });
+                decorativeBarBrush->SetStartPoint({ dbr.left, dbr.top });
+                decorativeBarBrush->SetEndPoint({ dbr.right, dbr.top });
 
-                rndr->d2d1DeviceContext->FillRectangle(dbr, g_decorativeBarBrush.Get());
+                rndr->d2d1DeviceContext->FillRectangle(dbr, decorativeBarBrush.Get());
             }
             // 3 Brothers
             {
@@ -487,7 +444,7 @@ namespace d14engine::uikit
             // Children
             Panel::DrawChildrenObjects(rndr);
         }
-        EndDrawOnMask(rndr->d2d1DeviceContext.Get());
+        mask.EndMaskDraw(rndr->d2d1DeviceContext.Get());
     }
 
     void Window::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
@@ -495,14 +452,14 @@ namespace d14engine::uikit
         // Shadow
         if (temporaryAssociatedTabGroup.expired())
         {
-            ConfigShadowEffectInput(Resu::SHADOW_EFFECT.Get());
+            shadow.ConfigShadowEffectInput(Resu::SHADOW_EFFECT.Get());
 
             rndr->d2d1DeviceContext->DrawImage(Resu::SHADOW_EFFECT.Get(), AbsolutePosition());
         }
         // Content
         {
-            rndr->d2d1DeviceContext->DrawBitmap(maskBitmap.Get(), m_absoluteRect,
-                temporaryAssociatedTabGroup.expired() ? maskOpacity : maskOpacityWhenDragAboveTabGroup);
+            rndr->d2d1DeviceContext->DrawBitmap(mask.bitmap.Get(), m_absoluteRect,
+                temporaryAssociatedTabGroup.expired() ? mask.opacity : maskOpacityWhenDragAboveTabGroup);
         }
     }
 
@@ -520,11 +477,11 @@ namespace d14engine::uikit
     {
         ResizablePanel::OnSizeHelper(e);
 
-        auto bitmapWidth = (UINT)(e.size.width + 0.5f);
-        auto bitmapHeight = (UINT)(e.size.height + 0.5f);
+        auto bitmapWidth = Mathu::Rounding(e.size.width);
+        auto bitmapHeight = Mathu::Rounding(e.size.height);
 
-        LoadMaskBitmap(bitmapWidth, bitmapHeight);
-        LoadShadowBitmap(bitmapWidth, bitmapHeight);
+        mask.LoadMaskBitmap(bitmapWidth, bitmapHeight);
+        shadow.LoadShadowBitmap(bitmapWidth, bitmapHeight);
     }
 
     void Window::OnChangeThemeHelper(WstrViewParam themeName)
@@ -533,162 +490,162 @@ namespace d14engine::uikit
 
         if (themeName == L"Light")
         {
-            backgroundColor = { 0.95f, 0.95f, 0.95f, 1.0f };
-            backgroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0xfafafa };
+            background.opacity = 1.0f;
 
-            shadowColor = { 0.7f, 0.7f, 0.7f, 1.0f };
-            shadowOpacity = 1.0f;
+            shadow.color = D2D1::ColorF{ 0xb2b2b2 };
+            shadow.opacity = 1.0f;
 
-            // Title panel, linear gradient, bottom -> top, 80% B -> 95% B.
+            // Title panel, linear gradient, bottom -> top.
             {
                 ComPtr<ID2D1GradientStopCollection> coll;
                 D2D1_GRADIENT_STOP stop[] =
                 {
-                    { 0.0f, { 0.8f, 0.8f, 0.8f, 1.0f } },
-                    { 1.0f, { 0.95f, 0.95f, 0.95f, 1.0f } }
+                    { 0.0f, D2D1::ColorF{ 0xcccccc } },
+                    { 1.0f, D2D1::ColorF{ 0xf2f2f2 } }
                 };
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
                                 CreateGradientStopCollection(stop, _countof(stop), &coll));
 
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                                CreateLinearGradientBrush({}, coll.Get(), &g_titleBarPanelBrush));
+                                CreateLinearGradientBrush({}, coll.Get(), &titleBarPanelBrush));
             }
-            // Decorative bar, linear gradient, left -> right, Crimson -> Firebrick.
+            // Decorative bar, linear gradient, left -> right.
             {
                 ComPtr<ID2D1GradientStopCollection> coll;
                 D2D1_GRADIENT_STOP stop[] =
                 {
-                    { 0.0f, (D2D1::ColorF)D2D1::ColorF::Crimson },
-                    { 1.0f, (D2D1::ColorF)D2D1::ColorF::Firebrick }
+                    { 0.0f, D2D1::ColorF{ 0xd92929 } },
+                    { 1.0f, D2D1::ColorF{ 0xbf2424 } }
                 };
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
                                 CreateGradientStopCollection(stop, _countof(stop), &coll));
 
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                                CreateLinearGradientBrush({}, coll.Get(), &g_decorativeBarBrush));
+                                CreateLinearGradientBrush({}, coll.Get(), &decorativeBarBrush));
             }
 
             threeBrosAppearances[(size_t)ThreeBrosState::Idle] =
             {
-                (D2D1::ColorF)D2D1::ColorF::Black, // button color
+                D2D1::ColorF{ 0x000000 }, // button color
                 0.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // icon color
+                D2D1::ColorF{ 0x000000 }, // icon color
                 0.8f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::Hover] =
             {
-                (D2D1::ColorF)D2D1::ColorF::Black, // button color
-                1.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
-                0.8f, // icon opacity
+                D2D1::ColorF{ 0x000000 }, // button color
+                0.8f, // button opacity
+                D2D1::ColorF{ 0xe5e5e5 }, // icon color
+                1.0f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::Down] =
             {
-                (D2D1::ColorF)D2D1::ColorF::Black, // button color
-                0.6f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
-                0.6f, // icon opacity
+                D2D1::ColorF{ 0x000000 }, // button color
+                0.65f, // button opacity
+                D2D1::ColorF{ 0xffffff }, // icon color
+                0.65f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::CloseIdle] =
             {
-                { 0.78f, 0.12f, 0.2f, 1.0f }, // button color
+                D2D1::ColorF{ 0x000000 }, // button color
                 0.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::Black, // icon color
-                1.0f, // icon opacity
+                D2D1::ColorF{ 0x000000 }, // icon color
+                0.9f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::CloseHover] =
             {
-                { 0.78f, 0.12f, 0.2f, 1.0f }, // button color
-                1.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
+                D2D1::ColorF{ 0xe81123 }, // button color
+                0.8f, // button opacity
+                D2D1::ColorF{ 0xffffff }, // icon color
                 1.0f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::CloseDown] =
             {
-                { 0.78f, 0.12f, 0.2f, 1.0f }, // button color
-                0.8f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
-                0.8f, // icon opacity
+                D2D1::ColorF{ 0xf1707a }, // button color
+                0.65f, // button opacity
+                D2D1::ColorF{ 0x000000 }, // icon color
+                0.65f, // icon opacity
             };
         }
         else if (themeName == L"Dark")
         {
-            backgroundColor = { 0.15f, 0.15f, 0.15f, 1.0f };
-            backgroundOpacity = 1.0f;
+            background.color = D2D1::ColorF{ 0x262626 };
+            background.opacity = 1.0f;
 
-            shadowColor = { 0.05f, 0.05f, 0.05f, 1.0f };
-            shadowOpacity = 1.0f;
+            shadow.color = D2D1::ColorF{ 0x0d0d0d };
+            shadow.opacity = 1.0f;
 
-            // Title panel, linear gradient, bottom -> top, 15% B -> 25% B.
+            // Title panel, linear gradient, bottom -> top.
             {
                 ComPtr<ID2D1GradientStopCollection> coll;
                 D2D1_GRADIENT_STOP stop[] =
                 {
-                    { 0.0f, { 0.15f, 0.15f, 0.15f, 1.0f } },
-                    { 1.0f, { 0.25f, 0.25f, 0.25f, 1.0f } }
+                    { 0.0f, D2D1::ColorF{ 0x262626 } },
+                    { 1.0f, D2D1::ColorF{ 0x404040 } }
                 };
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
                                 CreateGradientStopCollection(stop, _countof(stop), &coll));
 
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                                CreateLinearGradientBrush({}, coll.Get(), &g_titleBarPanelBrush));
+                                CreateLinearGradientBrush({}, coll.Get(), &titleBarPanelBrush));
             }
-            // Decorative bar, linear gradient, left -> right, MediumSeaGreen -> SeaGreen.
+            // Decorative bar, linear gradient, left -> right.
             {
                 ComPtr<ID2D1GradientStopCollection> coll;
                 D2D1_GRADIENT_STOP stop[] =
                 {
-                    { 0.0f, (D2D1::ColorF)D2D1::ColorF::MediumSeaGreen },
-                    { 1.0f, (D2D1::ColorF)D2D1::ColorF::SeaGreen }
+                    { 0.0f, D2D1::ColorF{ 0x37a667 } },
+                    { 1.0f, D2D1::ColorF{ 0x2e8b57 } }
                 };
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
                                 CreateGradientStopCollection(stop, _countof(stop), &coll));
 
                 THROW_IF_FAILED(Application::APP->MainRenderer()->d2d1DeviceContext->
-                                CreateLinearGradientBrush({}, coll.Get(), &g_decorativeBarBrush));
+                                CreateLinearGradientBrush({}, coll.Get(), &decorativeBarBrush));
             }
 
             threeBrosAppearances[(size_t)ThreeBrosState::Idle] =
             {
-                (D2D1::ColorF)D2D1::ColorF::Black, // button color
+                D2D1::ColorF{ 0x000000 }, // button color
                 0.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
+                D2D1::ColorF{ 0xffffff }, // icon color
                 0.8f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::Hover] =
             {
-                { 0.1f, 0.1f, 0.1f, 1.0f }, // button color
-                1.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
-                0.8f, // icon opacity
+                D2D1::ColorF{ 0x1a1a1a }, // button color
+                0.8f, // button opacity
+                D2D1::ColorF{ 0xe5e5e5 }, // icon color
+                1.0f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::Down] =
             {
-                { 0.4f, 0.4f, 0.4f, 0.4f }, // button color
-                1.0f, // button opacity
-                (D2D1::ColorF)D2D1::ColorF::White, // icon color
-                0.6f, // icon opacity
+                D2D1::ColorF{ 0x666666 }, // button color
+                0.65f, // button opacity
+                D2D1::ColorF{ 0xffffff }, // icon color
+                0.65f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::CloseIdle] =
             {
-                { 0.78f, 0.12f, 0.2f, 1.0f }, // button color
+                D2D1::ColorF{ 0x000000 }, // button color
                 0.0f, // button opacity
-                { 0.9f, 0.9f, 0.9f, 1.0f }, // icon color
-                1.0f, // icon opacity
+                D2D1::ColorF{ 0xffffff }, // icon color
+                0.9f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::CloseHover] =
             {
-                { 0.78f, 0.12f, 0.2f, 1.0f }, // button color
-                1.0f, // button opacity
-                { 0.9f, 0.9f, 0.9f, 1.0f }, // icon color
+                D2D1::ColorF{ 0xe81123 }, // button color
+                0.8f, // button opacity
+                D2D1::ColorF{ 0xffffff }, // icon color
                 1.0f, // icon opacity
             };
             threeBrosAppearances[(size_t)ThreeBrosState::CloseDown] =
             {
-                { 0.78f, 0.32f, 0.32f, 1.0f }, // button color
-                1.0f, // button opacity
-                { 0.9f, 0.9f, 0.9f, 1.0f }, // icon color
-                0.8f, // icon opacity
+                D2D1::ColorF{ 0xf1707a }, // button color
+                0.65f, // button opacity
+                D2D1::ColorF{ 0x000000 }, // icon color
+                0.65f, // icon opacity
             };
         }
     }

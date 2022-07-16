@@ -5,42 +5,47 @@
 #include "Renderer/MathUtils.h"
 using namespace d14engine::renderer;
 
-#include "UIKit/Application.h"
-
 namespace d14engine::uikit
 {
     ElevatedButton::ElevatedButton(
         WstrParam text,
         const D2D1_RECT_F& rect,
         float roundRadius,
-        ComPtrParam<ID2D1Bitmap1> icon,
-        const D2D1_COLOR_F& normalColor,
-        const D2D1_COLOR_F& activeColor)
+        ComPtrParam<ID2D1Bitmap1> icon)
         :
-        FilledButton(text, rect, roundRadius, icon, normalColor, activeColor),
-        ShadowStyle((UINT)Width(), (UINT)Height(), 3.0f, { 0.8f, 0.8f, 0.8f, 1.0f }) { }
+        Panel(rect, Resu::SOLID_COLOR_BRUSH),
+        FilledButton(text, rect, roundRadius, icon),
+        shadow(Mathu::Rounding(Width()), Mathu::Rounding(Height()))
+    {
+        // TODO: add shadow area self-adaption.
+        shadow.standardDeviation = 5.0f;
+    }
 
     void ElevatedButton::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
     {
         FilledButton::OnRendererDrawD2D1LayerHelper(rndr);
 
-        BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
+        shadow.BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
+        {
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(shadow.opacity);
 
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(shadowOpacity);
-
-        rndr->d2d1DeviceContext->FillRoundedRectangle(
-            { SelfCoordRect(), roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get());
-
-        EndDrawOnShadow(rndr->d2d1DeviceContext.Get());
+            rndr->d2d1DeviceContext->FillRoundedRectangle(
+                {
+                    // TODO: add shadow size self-adaption.
+                    Mathu::MoveVertex(SelfCoordRect(), { 3.0f, 5.0f, -3.0f, -1.0f }),
+                    roundRadiusX, roundRadiusY
+                },
+                Resu::SOLID_COLOR_BRUSH.Get());
+        }
+        shadow.EndDrawOnShadow(rndr->d2d1DeviceContext.Get());
     }
 
     void ElevatedButton::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
         // Shadow
-        ConfigShadowEffectInput(Resu::SHADOW_EFFECT.Get());
+        shadow.ConfigShadowEffectInput(Resu::SHADOW_EFFECT.Get());
 
-        rndr->d2d1DeviceContext->DrawImage(
-            Resu::SHADOW_EFFECT.Get(), Mathu::Offset(AbsolutePosition(), { 0.0f, 1.0f }));
+        rndr->d2d1DeviceContext->DrawImage(Resu::SHADOW_EFFECT.Get(), AbsolutePosition());
 
         // Foreground
         FilledButton::OnRendererDrawD2D1ObjectHelper(rndr);
@@ -48,25 +53,23 @@ namespace d14engine::uikit
 
     void ElevatedButton::OnSizeHelper(SizeEvent& e)
     {
-        Panel::OnSizeHelper(e);
+        FilledButton::OnSizeHelper(e);
 
-        LoadShadowBitmap((UINT)(Width() + 0.5f), (UINT)(Height() + 0.5f));
+        shadow.LoadShadowBitmap(Mathu::Rounding(e.size.width), Mathu::Rounding(e.size.height));
     }
 
     void ElevatedButton::OnChangeThemeHelper(WstrViewParam themeName)
     {
         FilledButton::OnChangeThemeHelper(themeName);
 
+        // TODO: add shadow color self-adaption.
         if (themeName == L"Light")
         {
-            shadowColor = { 0.8f, 0.8f, 0.8f, 1.0f };
-            shadowOpacity = 1.0f;
-
+            shadow.color = D2D1::ColorF{ 0xb2b2b2 };
         }
         else if (themeName == L"Dark")
         {
-            shadowColor = { 0.2f, 0.2f, 0.2f, 1.0f };
-            shadowOpacity = 1.0f;
+            shadow.color = D2D1::ColorF{ 0x000000 };
         }
     }
 
@@ -74,19 +77,26 @@ namespace d14engine::uikit
     {
         if (e.status.LeftDown())
         {
-            shadowOpacity = 0.0f;
+            shadow.opacity = 0.0f;
         }
         else if (e.status.LeftUp())
         {
-            shadowOpacity = 1.0f;
+            shadow.opacity = 1.0f;
         }
         return FilledButton::OnMouseButtonHelper(e);
     }
 
     bool ElevatedButton::OnMouseLeaveHelper(MouseMoveEvent& e)
     {
-        shadowOpacity = 1.0f;
+        shadow.opacity = 1.0f;
 
         return FilledButton::OnMouseLeaveHelper(e);
+    }
+
+    void ElevatedButton::SetEnabled(bool value)
+    {
+        FilledButton::SetEnabled(value);
+
+        shadow.opacity = value ? 1.0f : 0.0f;
     }
 }

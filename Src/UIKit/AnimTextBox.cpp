@@ -13,10 +13,19 @@ namespace d14engine::uikit
     AnimTextBox::AnimTextBox(const D2D1_RECT_F& rect, float roundRadius)
         :
         TextBox(rect, roundRadius),
-        StrokeStyle(1.5f, { 0.8f, 0.8f, 0.8f, 1.0f }),
-        m_staticBottomLineColor(staticBottomLineIdleColor)
+        mask(Mathu::Rounding(Width()), Mathu::Rounding(Height()))
     {
-        backgroundColor = { 0.95f, 0.95f, 0.95f, 1.0f };
+        stroke.width = 1.5f;
+    }
+
+    void AnimTextBox::OnInitializeFinish()
+    {
+        TextBox::OnInitializeFinish();
+
+        // Note OnChangeTheme had been called in OnInitializeFinish,
+        // so we need to make sure the appearance is updated here.
+        background.color = backgroundIdleColor;
+        m_staticBottomLineColor = staticBottomLineIdleColor;
     }
 
     void AnimTextBox::OnRendererUpdateObject2DHelper(Renderer* rndr)
@@ -40,44 +49,63 @@ namespace d14engine::uikit
         }
     }
 
+    void AnimTextBox::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
+    {
+        TextBox::OnRendererDrawD2D1LayerHelper(rndr);
+
+        // Hide children by default (Only draw self part).
+        mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        {
+            TextBox::OnRendererDrawD2D1ObjectHelper(rndr);
+
+            // Frame
+            Resu::SOLID_COLOR_BRUSH->SetColor(stroke.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(stroke.opacity);
+
+            auto innerRect = Mathu::Stretch(m_absoluteRect, { -stroke.width * 0.5f, -stroke.width * 0.5f });
+
+            rndr->d2d1DeviceContext->DrawRoundedRectangle(
+                { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), stroke.width);
+
+            // Bottom Line
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(1.0f);
+
+            D2D1_POINT_2F left, right;
+
+            auto visibleTextAreaLeftTop = VisibleTextAbsolutePosition();
+
+            // Static One
+            Resu::SOLID_COLOR_BRUSH->SetColor(m_staticBottomLineColor);
+
+            left = { visibleTextAreaLeftTop.x, visibleTextAreaLeftTop.y + VisibleTextHeight() + staticBottomLineOffsetY };
+            right = { left.x + VisibleTextWidth(), left.y };
+
+            rndr->d2d1DeviceContext->DrawLine(left, right, Resu::SOLID_COLOR_BRUSH.Get(), staticBottomLineStrokeWidth);
+
+            if (m_currBottomLineLength > 0.0f)
+            {
+                // Dynamic One
+                Resu::SOLID_COLOR_BRUSH->SetColor(bottomLineColor);
+
+                left = { visibleTextAreaLeftTop.x, visibleTextAreaLeftTop.y + VisibleTextHeight() + bottomLineOffsetY };
+                right = { left.x + m_currBottomLineLength, left.y };
+
+                rndr->d2d1DeviceContext->DrawLine(left, right, Resu::SOLID_COLOR_BRUSH.Get(), bottomLineStrokeWidth);
+            }
+        }
+        mask.EndMaskDraw(rndr->d2d1DeviceContext.Get());
+    }
+
     void AnimTextBox::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
     {
-        TextBox::OnRendererDrawD2D1ObjectHelper(rndr);
+        rndr->d2d1DeviceContext->DrawBitmap(mask.bitmap.Get(), m_absoluteRect, mask.opacity);
+    }
 
-        // Frame
-        Resu::SOLID_COLOR_BRUSH->SetColor(strokeColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(strokeOpacity);
+    void AnimTextBox::OnSizeHelper(SizeEvent& e)
+    {
+        TextBox::OnSizeHelper(e);
 
-        auto innerRect = Mathu::Stretch(m_absoluteRect, { -strokeWidth * 0.5f, -strokeWidth * 0.5f });
-
-        rndr->d2d1DeviceContext->DrawRoundedRectangle(
-            { innerRect, roundRadiusX, roundRadiusY }, Resu::SOLID_COLOR_BRUSH.Get(), strokeWidth);
-
-        // Bottom Line
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(1.0f);
-
-        D2D1_POINT_2F left, right;
-
-        auto visibleTextAreaLeftTop = VisibleTextAbsolutePosition();
-
-        // Static One
-        Resu::SOLID_COLOR_BRUSH->SetColor(m_staticBottomLineColor);
-
-        left = { visibleTextAreaLeftTop.x, visibleTextAreaLeftTop.y + VisibleTextHeight() + staticBottomLineOffsetY };
-        right = { left.x + VisibleTextWidth(), left.y };
-
-        rndr->d2d1DeviceContext->DrawLine(left, right, Resu::SOLID_COLOR_BRUSH.Get(), staticBottomLineStrokeWidth);
-
-        if (m_currBottomLineLength > 0.0f)
-        {
-            // Dynamic One
-            Resu::SOLID_COLOR_BRUSH->SetColor(bottomLineColor);
-
-            left = { visibleTextAreaLeftTop.x, visibleTextAreaLeftTop.y + VisibleTextHeight() + bottomLineOffsetY };
-            right = { left.x + m_currBottomLineLength, left.y };
-
-            rndr->d2d1DeviceContext->DrawLine(left, right, Resu::SOLID_COLOR_BRUSH.Get(), bottomLineStrokeWidth);
-        }
+        mask.LoadMaskBitmap((UINT)(e.size.width + 0.5f), (UINT)(e.size.height + 0.5f));
     }
 
     void AnimTextBox::OnChangeThemeHelper(WstrViewParam themeName)
@@ -86,46 +114,46 @@ namespace d14engine::uikit
 
         if (themeName == L"Light")
         {
-            backgroundIdleColor = { 0.95f, 0.95f, 0.95f, 1.0f };
-            backgroundHoverColor = { 0.92f, 0.92f, 0.92f, 1.0f };
-            backgroundActiveColor = { 0.98f, 0.98f, 0.98f, 1.0f };
+            backgroundIdleColor = D2D1::ColorF{ 0xfbfbfb };
+            backgroundHoverColor = D2D1::ColorF{ 0xf5f5f5 };
+            backgroundActiveColor = D2D1::ColorF{ 0xffffff };
 
-            strokeColor = { 0.8f, 0.8f, 0.8f, 1.0f };
+            stroke.color = D2D1::ColorF{ 0xc2c2c2 };
 
-            staticBottomLineIdleColor = { 0.7f, 0.7f, 0.7f, 1.0f };
-            staticBottomLineHoverColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+            staticBottomLineIdleColor = D2D1::ColorF{ 0x8f8f8f };
+            staticBottomLineHoverColor = D2D1::ColorF{ 0xa8a8a8 };
 
-            bottomLineColor = (D2D1::ColorF)D2D1::ColorF::Crimson;
+            bottomLineColor = D2D1::ColorF{ 0xd92929 };
         }
         else if (themeName == L"Dark")
         {
-            backgroundIdleColor = { 0.17f, 0.17f, 0.17f, 1.0f };
-            backgroundHoverColor = { 0.2f, 0.2f, 0.2f, 1.0f };
-            backgroundActiveColor = { 0.1f, 0.1f, 0.1f, 1.0f };
+            backgroundIdleColor = D2D1::ColorF{ 0x262626 };
+            backgroundHoverColor = D2D1::ColorF{ 0x292929 };
+            backgroundActiveColor = D2D1::ColorF{ 0x1a1a1a };
 
-            strokeColor = { 0.25f, 0.25f, 0.25f, 1.0f };
+            stroke.color = D2D1::ColorF{ 0x3d3d3d };
 
-            staticBottomLineIdleColor = { 0.35f, 0.35f, 0.35f, 1.0f };
-            staticBottomLineHoverColor = { 0.4f, 0.4f, 0.4f, 1.0f };
+            staticBottomLineIdleColor = D2D1::ColorF{ 0x5c5c5c };
+            staticBottomLineHoverColor = D2D1::ColorF{ 0x4c4c4c };
 
-            bottomLineColor = (D2D1::ColorF)D2D1::ColorF::SeaGreen;
+            bottomLineColor = D2D1::ColorF{ 0x2e8b57 };
         }
 
         if (Application::APP->IsUIObjectFocused(weak_from_this()))
         {
-            backgroundColor = backgroundActiveColor;
+            background.color = backgroundActiveColor;
             m_staticBottomLineColor = staticBottomLineHoverColor;
         }
         else // Simply change to idle appearance otherwise.
         {
-            backgroundColor = backgroundIdleColor;
+            background.color = backgroundIdleColor;
             m_staticBottomLineColor = staticBottomLineIdleColor;
         }
     }
 
     bool AnimTextBox::OnGetFocusHelper()
     {
-        backgroundColor = backgroundActiveColor;
+        background.color = backgroundActiveColor;
 
         Application::APP->IncreaseAnimateCount();
 
@@ -134,7 +162,7 @@ namespace d14engine::uikit
 
     bool AnimTextBox::OnLoseFocusHelper()
     {
-        backgroundColor = backgroundIdleColor;
+        background.color = backgroundIdleColor;
         m_staticBottomLineColor = staticBottomLineIdleColor;
 
         m_currBottomLineLength = 0.0f;
@@ -148,7 +176,7 @@ namespace d14engine::uikit
     {
         if (!Application::APP->IsUIObjectFocused(weak_from_this()))
         {
-            backgroundColor = backgroundHoverColor;
+            background.color = backgroundHoverColor;
             m_staticBottomLineColor = staticBottomLineHoverColor;
         }
         return Panel::OnMouseEnterHelper(e);
@@ -158,9 +186,19 @@ namespace d14engine::uikit
     {
         if (!Application::APP->IsUIObjectFocused(weak_from_this()))
         {
-            backgroundColor = backgroundIdleColor;
+            background.color = backgroundIdleColor;
             m_staticBottomLineColor = staticBottomLineIdleColor;
         }
         return Panel::OnMouseLeaveHelper(e);
+    }
+
+    void AnimTextBox::SetEnabled(bool value)
+    {
+        TextBox::SetEnabled(value);
+
+        mask.opacity = value ? 1.0f : 0.45f;
+
+        background.color = backgroundIdleColor;
+        m_staticBottomLineColor = staticBottomLineIdleColor;
     }
 }

@@ -8,18 +8,20 @@
 
 namespace d14engine::uikit
 {
-    struct TextBox : Panel, protected MaskStyle, SolidStyle, TextInputObject
+    struct TextBox : Panel, TextInputObject
     {
         TextBox(const D2D1_RECT_F& rect, float roundRadius = 0.0f);
 
-        D2D1_COLOR_F indicatorColor = (D2D1::ColorF)D2D1::ColorF::Black;
-        float indicatorOpacity = 1.0f;
+        D2D1_COLOR_F indicatorColor = {};
+        float indicatorOpacity = {};
 
         // The vertical distance between the panel's top/bottom and the indicator's top/bottom.
         float indicatorExternalY = 5.0f;
         float indicatorBlinkIntervalSecs = 0.5f;
 
         void OnInitializeFinish() override;
+
+        SolidStyle background = {};
 
     public:
         const Wstring& Text();
@@ -63,6 +65,19 @@ namespace d14engine::uikit
 
         SharedPtr<Label> m_hiliteTextLabel = {};
 
+        // Note we have to draw hilite range's background manually
+        // since the foreground text's width will be set to infinity
+        // to make sure all characters are displayed in single line.
+        struct HiliteTextBackgroundDrawInfo
+        {
+            float startOffsetX = 0.0f;
+            float endOffsetX = 0.0f;
+
+            D2D1_COLOR_F color = {};
+            float opacity = {};
+        }
+        m_hiliteTextBackgroundDrawInfo = {};
+
         // To keep the text displayed within single line, the label's rect
         // must be set to infinite width (FLT_MAX), so we need to maintain
         // an extra protected field for the actual visible text rectangle.
@@ -77,6 +92,8 @@ namespace d14engine::uikit
         float VisibleTextHeight();
 
         D2D1_SIZE_F VisibleTextSize();
+
+        MaskStyle m_visibleTextMaskStyle = { 0, 0 };
 
         // This field decides whether to show the indicator.
         bool m_showIndicator = false;
@@ -112,7 +129,7 @@ namespace d14engine::uikit
         void PerformCutCommand();
         void PerformPasteCommand();
 
-    public:
+    protected:
         // Override interface methods.
 
         // IDrawObject2D
@@ -137,9 +154,11 @@ namespace d14engine::uikit
 
         bool OnKeyboardHelper(KeyboardEvent& e) override;
 
+    public:
         // TextInputObject
         Optional<COMPOSITIONFORM> GetCompositionForm() override;
 
+    protected:
         void OnInputStringHelper(WstrViewParam content) override;
     };
 }

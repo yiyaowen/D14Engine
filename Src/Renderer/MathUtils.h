@@ -6,11 +6,12 @@ namespace d14engine::renderer
 {
     struct MathUtils
     {
-        // 3D
+        // Scalar & Numerical
 
-        static XMFLOAT4X4 IdentityFloat4x4();
+        static int Ceiling(float value);
+        static int Rounding(float value);
 
-        // 2D
+        // 2D Matrix & Vector
 
         static bool IsInside(const D2D1_POINT_2F& p, const D2D1_RECT_F& r);
         static bool IsOverlapped(const D2D1_POINT_2F& p, const D2D1_RECT_F& r);
@@ -38,6 +39,10 @@ namespace d14engine::renderer
         static D2D1_RECT_F IncreaseBottom(const D2D1_RECT_F& rect, float value);
 
         static D2D1_RECT_F MoveVertex(const D2D1_RECT_F& rect, const D2D1_RECT_F& delta);
+
+        // 3D Matrix & Vector
+
+        static XMFLOAT4X4 IdentityFloat4x4();
     };
     // Introduce this alias to avoid too long prefix.
     using Mathu = MathUtils;
