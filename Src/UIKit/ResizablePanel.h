@@ -44,7 +44,7 @@ namespace d14engine::uikit
         // Override interface methods.
 
         // Panel
-        bool IsHit(Event::Point& p) override;
+        bool IsHitHelper(Event::Point& p) override;
 
     protected:
         // See ClickablePanel.h for the reason of an extral OnXxxWrapper.

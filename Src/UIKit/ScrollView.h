@@ -17,7 +17,7 @@ namespace d14engine::uikit
 
 		void OnInitializeFinish() override;
 
-		MaskStyle mask = { 0, 0 };
+		MaskStyle contentMask = { 0, 0 };
 		SolidStyle background = {};
 		StrokeStyle stroke = {};
 
@@ -56,11 +56,29 @@ namespace d14engine::uikit
 		// Used to update viewport offset in mouse-move event.
 		D2D1_POINT_2F m_originalViewportOffset = { 0.0f, 0.0f };
 
+		bool IsControllingScrollBars();
+		bool IsControllingHorzBar();
+		bool IsControllingVertBar();
+
 		bool m_isHorzBarHover = false, m_isHorzBarDown = false;
 		bool m_isVertBarHover = false, m_isVertBarDown = false;
 
 		D2D1_RECT_F HorzBarRect(ScrollBarState state);
 		D2D1_RECT_F VertBarRect(ScrollBarState state);
+
+		ScrollBarState GetHorzBarState(bool isHover, bool isDown);
+		ScrollBarState GetVertBarState(bool isHover, bool isDown);
+
+	public:
+		void OnViewportOffsetChange(const D2D1_POINT_2F& offset);
+
+		Function<void(ScrollView*,const D2D1_POINT_2F&)>
+			f_onViewportOffsetChangeOverride = {},
+			f_onViewportOffsetChangeBefore = {},
+			f_onViewportOffsetChangeAfter = {};
+
+	protected:
+		virtual void OnViewportOffsetChangeHelper(const D2D1_POINT_2F& offset);
 		
 	protected:
 		// Override interface methods.

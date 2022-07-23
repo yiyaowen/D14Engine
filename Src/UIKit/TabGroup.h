@@ -26,12 +26,9 @@ namespace d14engine::uikit
 
         struct TabSeparatorStyle
         {
-            float height = {};
+            D2D1_SIZE_F size = {};
 
-            D2D1_COLOR_F color = {};
-            float opacity = {};
-
-            float width = {};
+            SolidStyle background = {};
         }
         tabSeparatorStyle = {};
 
@@ -45,11 +42,9 @@ namespace d14engine::uikit
             struct Card
             {
                 float height = {};
-
                 float roundRadius = {};
 
-                D2D1_COLOR_F color = {};
-                float opacity = {};
+                SolidStyle background = {};
             }
             card = {};
 
@@ -59,7 +54,7 @@ namespace d14engine::uikit
                 float leftOffset = {};
 
                 ComPtr<ID2D1Bitmap1> bitmap = {};
-                float opacity = {};
+                float bitmapOpacity = {};
             }
             icon = {};
 
@@ -70,11 +65,8 @@ namespace d14engine::uikit
 
                 ComPtr<IDWriteTextFormat> format = {};
 
-                D2D1_COLOR_F foregroundColor = {};
-                float foregroundOpacity = {};
-
-                D2D1_COLOR_F color = {};
-                float opacity = {};
+                SolidStyle foreground = {};
+                SolidStyle background = {};
             }
             title = {};
 
@@ -89,15 +81,12 @@ namespace d14engine::uikit
 
                 struct ColorScheme
                 {
-                    D2D1_COLOR_F foregroundColor = {};
-                    float foregroundOpacity = {};
-
-                    D2D1_COLOR_F color = {};
-                    float opacity = {};
+                    SolidStyle foreground = {};
+                    SolidStyle background = {};
                 }
                 colorSchemes[(size_t)TabCloseXState::Count] = {};
 
-                float width = {};
+                float strokeWidth = {};
             }
             closeX = {};
         }
@@ -171,12 +160,7 @@ namespace d14engine::uikit
     public:
         SharedPtr<Window> PromotePageToWindow(size_t index);
 
-        struct MaskStyleWhenBelowDragWindow
-        {
-            D2D1_COLOR_F color = {};
-            float opacity = {};
-        }
-        maskStyleWhenBelowDragWindow = {};
+        SolidStyle maskStyleWhenBelowDragWindow = {};
 
         // When a window is being dragged, all registered tab-groups will be
         // associated with the window. After the window is released above
@@ -197,7 +181,7 @@ namespace d14engine::uikit
 
     public:
         // Panel
-        bool IsHit(Event::Point& p) override;
+        bool IsHitHelper(Event::Point& p) override;
 
         float MinimalWidth() override;
 

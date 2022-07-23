@@ -44,7 +44,7 @@ namespace d14engine::uikit
 
     public:
         // Panel
-        bool IsHit(uikit::Event::Point& p) override;
+        bool IsHitHelper(uikit::Event::Point& p) override;
 
     protected:
         void OnSizeHelper(SizeEvent& e) override;

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Common/Precompile.h"
+
 #include "Common/RuntimeError.h"
 
 namespace d14engine::renderer

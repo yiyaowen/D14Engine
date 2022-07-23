@@ -179,13 +179,14 @@
     <ClCompile Include="Src\UIKit\ListView.cpp" />
     <ClCompile Include="Src\UIKit\OnOffSwitch.cpp" />
     <ClCompile Include="Src\UIKit\ResizablePanel.cpp" />
-    <ClCompile Include="Src\UIKit\SandwichButton.cpp" />
+    <ClCompile Include="Src\UIKit\ListViewItem.cpp" />
     <ClCompile Include="Src\UIKit\ScrollView.cpp" />
     <ClCompile Include="Src\UIKit\TabGroup.cpp" />
     <ClCompile Include="Src\UIKit\TextBox.cpp" />
     <ClCompile Include="Src\UIKit\StrokeStyle.cpp" />
     <ClCompile Include="Src\UIKit\ToggleButton.cpp" />
     <ClCompile Include="Src\UIKit\TreeView.cpp" />
+    <ClCompile Include="Src\UIKit\TreeViewItem.cpp" />
     <ClCompile Include="Test\UIKit\TestMain.cpp" />
     <ClCompile Include="Src\UIKit\Application.cpp" />
     <ClCompile Include="Src\UIKit\BitmapUtils.cpp" />
@@ -203,6 +204,7 @@
     <ClCompile Include="Src\UIKit\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Src\Common\CppLangUtils.h" />
     <ClInclude Include="Src\Common\Precompile.h" />
     <ClInclude Include="Src\Renderer\ICamera.h" />
     <ClInclude Include="Src\Renderer\IDrawLayer.h" />
@@ -232,7 +234,7 @@
     <ClInclude Include="Src\UIKit\ListView.h" />
     <ClInclude Include="Src\UIKit\OnOffSwitch.h" />
     <ClInclude Include="Src\UIKit\ResizablePanel.h" />
-    <ClInclude Include="Src\UIKit\SandwichButton.h" />
+    <ClInclude Include="Src\UIKit\ListViewItem.h" />
     <ClInclude Include="Src\UIKit\ScrollView.h" />
     <ClInclude Include="Src\UIKit\StatefulObject.h" />
     <ClInclude Include="Src\UIKit\StrokeStyle.h" />
@@ -256,6 +258,7 @@
     <ClInclude Include="Src\UIKit\ResourceUtils.h" />
     <ClInclude Include="Src\UIKit\ToggleButton.h" />
     <ClInclude Include="Src\UIKit\TreeView.h" />
+    <ClInclude Include="Src\UIKit\TreeViewItem.h" />
     <ClInclude Include="Src\UIKit\Window.h" />
   </ItemGroup>
   <ItemGroup>

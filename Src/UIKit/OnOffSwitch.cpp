@@ -72,7 +72,7 @@ namespace d14engine::uikit
     {
         ClickablePanel::OnRendererDrawD2D1LayerHelper(rndr);
 
-        // Hide children by default (Only draw self part).
+        // Hide children by default (no need to prepare children layers).
         mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
         {
             float selfWidth = Width(), selfHeight = Height();

@@ -52,14 +52,4 @@ do { \
     } \
 } while (0)
 
-    // Simulate "finally" mechanism with RAII.
-    template<typename T>
-    struct FinalAction
-    {
-        T clean;
-        explicit FinalAction(T functor) : clean{ functor } { }
-        virtual ~FinalAction() { clean(); }
-    };
-    template<typename T>
-    FinalAction<T> Finally(T functor) { return FinalAction<T>(functor); }
 }

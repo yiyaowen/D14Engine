@@ -351,6 +351,9 @@ namespace d14engine::uikit
     {
         ResizablePanel::OnRendererDrawD2D1LayerHelper(rndr);
 
+        // We had taken over children drawing, so Panel wouldn't prepare children layers.
+        Panel::DrawChildrenLayers(rndr);
+
         // The shadow will be hiden temporarily when drag above any registered tab-group.
         if (temporaryAssociatedTabGroup.expired())
         {

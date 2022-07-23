@@ -10,15 +10,8 @@ namespace d14engine::uikit
     {
         enum class IconIndex
         {
-            Arrow,
-            Hand,
-            AllSize,
-            Ibeam,
-            HorzSize,
-            VertSize,
-            MainDiagSize,
-            BackDiagSize,
-            Count
+            Arrow, Hand, AllSize, Ibeam, HorzSize, VertSize,
+            MainDiagSize, BackDiagSize, Count
         };
 
         struct Icon

@@ -1,4 +1,5 @@
 ﻿#include "Common/Precompile.h"
+
 #include "Common/RuntimeError.h"
 using namespace d14engine;
 
@@ -95,10 +96,10 @@ int wmain(int argc, wchar_t* argv[])
             tabGroup->SetCardWidth(120);
 
             auto scrollView = MakeUIObject<ScrollView>(D2D1_RECT_F{});
-            auto btnListView = MakeUIObject<ListView>(D2D1_RECT_F{});
+            auto listView = MakeUIObject<ListView>(D2D1_RECT_F{});
 
             tabGroup->AppendPage({ MakeUIObject<Label>(L"新标签页", D2D1_RECT_F{}), scrollView });
-            tabGroup->AppendPage({ MakeUIObject<Label>(L"按钮列表", D2D1_RECT_F{}), btnListView });
+            tabGroup->AppendPage({ MakeUIObject<Label>(L"列表视图", D2D1_RECT_F{}), listView });
             tabGroup->SelectPage(0);
 
             ConstraintLayout::GeometryInfo mainGeoInfo = {};
@@ -273,31 +274,13 @@ int wmain(int argc, wchar_t* argv[])
 
             sideLayout->AddElement(toggleButton, sideGeoInfo);
 
-            // Button List View
+            // List View
 
-            for (int i = 0; i < 10; ++i)
+            for (int i = 0; i < 100; ++i)
             {
-                auto btnItem = MakeUIObject<FlatButton>(
-                    L"Item " + std::to_wstring(i), D2D1_RECT_F{ 0.0f, 0.0f, 0.0f, 40.0f });
-
-                btnItem->f_onMouseEnterAfter = [&, i](Panel* p, MouseMoveEvent& e)
-                {
-                    auto b = dynamic_cast<Button*>(p);
-                    if (b != nullptr) b->textLabel->SetText(L"Item " + std::to_wstring(i) + L" / hovered");
-                    return false;
-                };
-                btnItem->f_onMouseButtonReleaseAfter = [&, i](ClickablePanel* p, ClickablePanel::Event& e)
-                {
-                    ((Button*)p)->textLabel->SetText(L"Item " + std::to_wstring(i) + L" / clicked");
-                };
-                btnItem->f_onMouseLeaveAfter = [&, i](Panel* p, MouseMoveEvent& e)
-                {
-                    auto b = dynamic_cast<Button*>(p);
-                    if (b != nullptr) b->textLabel->SetText(L"Item " + std::to_wstring(i));
-                    return false;
-                };
-
-                btnListView->AppendItem(btnItem);
+                listView->AppendItem(MakeUIObject<ListViewItem>(
+                    D2D1_RECT_F{ 0.0f, 0.0f, 0.0f, 30.0f },
+                    MakeUIObject<Label>(std::to_wstring(i), D2D1_RECT_F{})));
             }
         });
     }

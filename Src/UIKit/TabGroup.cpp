@@ -297,7 +297,7 @@ namespace d14engine::uikit
         if (setting.bitmap != nullptr)
         {
             rndr->d2d1DeviceContext->DrawBitmap(
-                setting.bitmap.Get(), IconRect(index), setting.opacity);
+                setting.bitmap.Get(), IconRect(index), setting.bitmapOpacity);
         }
     }
 
@@ -319,10 +319,9 @@ namespace d14engine::uikit
 
             // Color Scheme & Text Format
             page.title->format = setting.format;
-            page.title->foreground.color = setting.foregroundColor;
-            page.title->foreground.opacity = setting.foregroundOpacity;
-            page.title->background.color = setting.color;
-            page.title->background.opacity = setting.opacity;
+
+            page.title->foreground = setting.foreground;
+            page.title->background = setting.background;
 
             page.title->alignment.horizontal = DWRITE_TEXT_ALIGNMENT_LEADING;
             page.title->alignment.vertical = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
@@ -344,8 +343,8 @@ namespace d14engine::uikit
         auto& colorScheme = setting.colorSchemes[(size_t)state];
 
         // Background
-        Resu::SOLID_COLOR_BRUSH->SetColor(colorScheme.color);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(colorScheme.opacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(colorScheme.background.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(colorScheme.background.opacity);
 
         rndr->d2d1DeviceContext->FillRoundedRectangle(
             {
@@ -356,8 +355,8 @@ namespace d14engine::uikit
             Resu::SOLID_COLOR_BRUSH.Get());
 
         // "X" Icon
-        Resu::SOLID_COLOR_BRUSH->SetColor(colorScheme.foregroundColor);
-        Resu::SOLID_COLOR_BRUSH->SetOpacity(colorScheme.foregroundOpacity);
+        Resu::SOLID_COLOR_BRUSH->SetColor(colorScheme.foreground.color);
+        Resu::SOLID_COLOR_BRUSH->SetOpacity(colorScheme.foreground.opacity);
 
         auto closeXRect = CloseXRect(index);
 
@@ -366,14 +365,14 @@ namespace d14engine::uikit
             { closeXRect.left, closeXRect.top },
             { closeXRect.right, closeXRect.bottom },
             Resu::SOLID_COLOR_BRUSH.Get(),
-            setting.width);
+            setting.strokeWidth);
 
         // Back Diagonal
         rndr->d2d1DeviceContext->DrawLine(
             { closeXRect.right, closeXRect.top },
             { closeXRect.left, closeXRect.bottom },
             Resu::SOLID_COLOR_BRUSH.Get(),
-            setting.width);
+            setting.strokeWidth);
     }
 
     void TabGroup::TriggerPagePromoteEvent(MouseMoveEvent& e)
@@ -456,6 +455,11 @@ namespace d14engine::uikit
 
         if (m_currActivePageIndex >= 0 && m_currActivePageIndex < m_pages.size())
         {
+            // Only need to prepare layer for content.
+            if (m_pages[m_currActivePageIndex].content->IsD2D1ObjectVisible())
+            {
+                m_pages[m_currActivePageIndex].content->OnRendererDrawD2D1Layer(rndr);
+            }
             // Active-card on Mask && Shape of Shadow
             m_activeCardShadowStyle.BeginDrawOnShadow(rndr->d2d1DeviceContext.Get());
             {
@@ -521,8 +525,8 @@ namespace d14engine::uikit
                 }
                 THROW_IF_FAILED(geoSink->Close());
 
-                Resu::SOLID_COLOR_BRUSH->SetColor(cardSetting.color);
-                Resu::SOLID_COLOR_BRUSH->SetOpacity(cardSetting.opacity);
+                Resu::SOLID_COLOR_BRUSH->SetColor(cardSetting.background.color);
+                Resu::SOLID_COLOR_BRUSH->SetOpacity(cardSetting.background.opacity);
 
                 rndr->d2d1DeviceContext->FillGeometry(pathGeo.Get(), Resu::SOLID_COLOR_BRUSH.Get());
             }
@@ -536,8 +540,8 @@ namespace d14engine::uikit
         {
             auto& cardSetting = tabAppearances[(size_t)TabState::Dormant].card;
 
-            Resu::SOLID_COLOR_BRUSH->SetColor(cardSetting.color);
-            Resu::SOLID_COLOR_BRUSH->SetOpacity(cardSetting.opacity);
+            Resu::SOLID_COLOR_BRUSH->SetColor(cardSetting.background.color);
+            Resu::SOLID_COLOR_BRUSH->SetOpacity(cardSetting.background.opacity);
 
             rndr->d2d1DeviceContext->FillRoundedRectangle(
                 {
@@ -562,8 +566,8 @@ namespace d14engine::uikit
             {
                 auto& cardSetting = tabAppearances[(size_t)TabState::Hover].card;
 
-                Resu::SOLID_COLOR_BRUSH->SetColor(cardSetting.color);
-                Resu::SOLID_COLOR_BRUSH->SetOpacity(cardSetting.opacity);
+                Resu::SOLID_COLOR_BRUSH->SetColor(cardSetting.background.color);
+                Resu::SOLID_COLOR_BRUSH->SetOpacity(cardSetting.background.opacity);
 
                 rndr->d2d1DeviceContext->FillRoundedRectangle(
                     {
@@ -584,7 +588,10 @@ namespace d14engine::uikit
         // Content
         if (m_currActivePageIndex >= 0 && m_currActivePageIndex < m_pages.size())
         {
-            m_pages[m_currActivePageIndex].content->OnRendererDrawD2D1Object(rndr);
+            if (m_pages[m_currActivePageIndex].content->IsD2D1ObjectVisible())
+            {
+                m_pages[m_currActivePageIndex].content->OnRendererDrawD2D1Object(rndr);
+            }
         }
         // Outline
         {
@@ -604,7 +611,7 @@ namespace d14engine::uikit
             rndr->d2d1DeviceContext->DrawBitmap(
                 m_activeCardShadowStyle.bitmap.Get(),
                 CardRect(m_currActivePageIndex),
-                cardSetting.opacity);
+                cardSetting.background.opacity);
         }
         // Separator of Dormant-card
         {
@@ -619,19 +626,19 @@ namespace d14engine::uikit
                     if (cardIndex != m_pages.size() - 1 && GetTabState(cardIndex + 1) == TabState::Dormant)
                     {
                         // Draw separators between dormant tabs.
-                        Resu::SOLID_COLOR_BRUSH->SetColor(tabSeparatorStyle.color);
-                        Resu::SOLID_COLOR_BRUSH->SetOpacity(tabSeparatorStyle.opacity);
+                        Resu::SOLID_COLOR_BRUSH->SetColor(tabSeparatorStyle.background.color);
+                        Resu::SOLID_COLOR_BRUSH->SetOpacity(tabSeparatorStyle.background.opacity);
 
                         auto cardRect = CardRect(cardIndex);
 
-                        float lineTop = cardRect.top + (cardSetting.height - tabSeparatorStyle.height) * 0.5f;
-                        float lineBottom = lineTop + tabSeparatorStyle.height;
+                        float lineTop = cardRect.top + (cardSetting.height - tabSeparatorStyle.size.height) * 0.5f;
+                        float lineBottom = lineTop + tabSeparatorStyle.size.width;
 
                         rndr->d2d1DeviceContext->DrawLine(
                             { cardRect.right, lineTop },
                             { cardRect.right, lineBottom },
                             Resu::SOLID_COLOR_BRUSH.Get(),
-                            tabSeparatorStyle.width);
+                            tabSeparatorStyle.size.width);
                     }
                 }
                 // Draw icon, title && close-x for all tabs.
@@ -651,15 +658,15 @@ namespace d14engine::uikit
         }
     }
 
-    float TabGroup::MinimalWidth()
-    {
-        return m_cardWidth * (float)m_pages.size();
-    }
-
-    bool TabGroup::IsHit(Event::Point& p)
+    bool TabGroup::IsHitHelper(Event::Point& p)
     {
         return Mathu::IsOverlapped(p, Mathu::IncreaseTop(
             ResizeFrameExtendedRect(m_absoluteRect), -tabBarExtendedHeight));
+    }
+
+    float TabGroup::MinimalWidth()
+    {
+        return m_cardWidth * (float)m_pages.size();
     }
 
     void TabGroup::OnSizeHelper(SizeEvent& e)
@@ -700,137 +707,275 @@ namespace d14engine::uikit
 
             tabSeparatorStyle =
             {
-                16.0f, // height
-                D2D1::ColorF{ 0x808080 }, // color
-                1.0f, // opacity
-                1.0f // stroke width
+                // size
+                {
+                    1.0f, // width
+                    16.0f // height
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0x808080 }, // color
+                    1.0f // opacity
+                }
             };
             tabAppearances[(size_t)TabState::Active] =
             {
-                { // card appearance
+                // card appearance
+                {
                     32.0f, // height
                     8.0f, // round radius
-                    D2D1::ColorF{ 0xf2f2f2 }, // color
-                    1.0f // opacity
+
+                    // background
+                    {
+                        D2D1::ColorF{ 0xf2f2f2 }, // color
+                        1.0f // opacity
+                    }
                 },
                 // icon appearance
                 tabAppearances[(size_t)TabState::Active].icon,
-                { // title appearance
+
+                // title appearance
+                {
                     { 80.0f, 20.0f }, // size
                     20.0f, // left offset
+
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    D2D1::ColorF{ 0x000000 }, // foreground color
-                    1.0, // foreground opacity
-                    D2D1::ColorF{ 0x000000 }, // background color
-                    0.0f // background opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0x000000 }, //color
+                        1.0 // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 },
-                { // close-x appearance
+                // close-x appearance
+                {
                     { 8.0f, 8.0f }, // size
                     20.0f, // right offset
+
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
-                    {{ // idle
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.0f, // background opacity
-                    },{ // hover
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.1f, // background opacity
-                    },{ // down
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.2f, // background opacity
-                    }},
+
+                    // color scheme
+                    {
+                        // idle
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.0f // opacity
+                            }
+                        },
+                        // hover
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.1f // opacity
+                            }
+                        },
+                        // down
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.2f // opacity
+                            }
+                        }
+                    },
                     1.0f, // stroke width
                 }
             };
             tabAppearances[(size_t)TabState::Hover] =
             {
-                { // card appearance
+                // card appearance
+                {
                     24.0f, // height
                     8.0f, // round radius
-                    D2D1::ColorF{ 0xcccccc }, // color
-                    1.0f // opacity
+
+                    // background
+                    {
+                        D2D1::ColorF{ 0xd9d9d9 }, // color
+                        1.0f // opacity
+                    }
                 },
                 // icon appearance
                 tabAppearances[(size_t)TabState::Hover].icon,
-                { // title appearance
+
+                // title appearance
+                {
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
+
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    D2D1::ColorF{ 0x000000 }, // foreground color
-                    1.0, // foreground opacity
-                    D2D1::ColorF{ 0x000000 }, // background color
-                    0.0f // background opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0x000000 }, //color
+                        1.0 // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 },
-                { // close-x appearance
+                // close-x appearance
+                {
                     { 8.0f, 8.0f }, // size
                     12.0f, // right offset
+
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
-                    {{ // idle
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.0f, // background opacity
-                    },{ // hover
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.1f, // background opacity
-                    },{ // down
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.2f, // background opacity
-                    }},
+
+                    // color scheme
+                    {
+                        // idle
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.0f // opacity
+                            }
+                        },
+                        // hover
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.1f // opacity
+                            }
+                        },
+                        // down
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.2f // opacity
+                            }
+                        }
+                    },
                     1.0f, // stroke width
                 }
             };
             tabAppearances[(size_t)TabState::Dormant] =
             {
-                { // card appearance
+                // card appearance
+                {
                     24.0f, // height
                     8.0f, // round radius
-                    D2D1::ColorF{ 0xe5e5e5 }, // color
-                    1.0f // opacity
+
+                    // background
+                    {
+                        D2D1::ColorF{ 0xe5e5e5 }, // color
+                        1.0f // opacity
+                    }
                 },
                 // icon appearance
                 tabAppearances[(size_t)TabState::Dormant].icon,
-                { // title appearance
+
+                // title appearance
+                {
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
+
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    D2D1::ColorF{ 0x000000 }, // foreground color
-                    1.0, // foreground opacity
-                    D2D1::ColorF{ 0x000000 }, // background color
-                    0.0f // background opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0x000000 }, //color
+                        1.0 // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 },
-                { // close-x appearance
+                // close-x appearance
+                {
                     { 8.0f, 8.0f }, // size
                     12.0f, // right offset
+
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
-                    {{ // idle
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.0f, // background opacity
-                    },{ // hover
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.1f, // background opacity
-                    },{ // down
-                        D2D1::ColorF{ 0x000000 }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.2f, // background opacity
-                    }},
+
+                    // color scheme
+                    {
+                        // idle
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.0f // opacity
+                            }
+                        },
+                        // hover
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.1f // opacity
+                            }
+                        },
+                        // down
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0x000000 }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.2f // opacity
+                            }
+                        }
+                    },
                     1.0f, // stroke width
                 }
             };
@@ -852,137 +997,275 @@ namespace d14engine::uikit
 
             tabSeparatorStyle =
             {
-                16.0f, // height
-                D2D1::ColorF{ 0x808080 }, // color
-                1.0f, // opacity
-                1.0f // stroke width
+                // size
+                {
+                    1.0f, // width
+                    16.0f // height
+                },
+                // background
+                {
+                    D2D1::ColorF{ 0x808080 }, // color
+                    1.0f // opacity
+                }
             };
             tabAppearances[(size_t)TabState::Active] =
             {
-                { // card appearance
+                // card appearance
+                {
                     32.0f, // height
                     8.0f, // round radius
-                    D2D1::ColorF{ 0x1f1f1f }, // color
-                    1.0f // opacity
+
+                    // background
+                    {
+                        D2D1::ColorF{ 0x1f1f1f }, // color
+                        1.0f // opacity
+                    }
                 },
                 // icon appearance
                 tabAppearances[(size_t)TabState::Active].icon,
-                { // title appearance
+
+                // title appearance
+                {
                     { 80.0f, 20.0f }, // size
                     20.0f, // left offset
+
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    D2D1::ColorF{ 0xe5e5e5 }, // foreground color
-                    1.0, // foreground opacity
-                    D2D1::ColorF{ 0x000000 }, // background color
-                    0.0f // background opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0xe5e5e5 }, //color
+                        1.0 // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 },
-                { // close-x appearance
+                // close-x appearance
+                {
                     { 8.0f, 8.0f }, // size
                     20.0f, // right offset
+
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
-                    {{ // idle
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.0f, // background opacity
-                    },{ // hover
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0xffffff }, // background color
-                        0.2f, // background opacity
-                    },{ // down
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0xffffff }, // background color
-                        0.3f, // background opacity
-                    }},
+
+                    // color scheme
+                    {
+                        // idle
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.0f // opacity
+                            }
+                        },
+                        // hover
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0xffffff }, // color
+                                0.2f // opacity
+                            }
+                        },
+                        // down
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0xffffff }, // color
+                                0.3f // opacity
+                            }
+                        }
+                    },
                     1.0f, // stroke width
                 }
             };
             tabAppearances[(size_t)TabState::Hover] =
             {
-                { // card appearance
+                // card appearance
+                {
                     24.0f, // height
                     8.0f, // round radius
-                    D2D1::ColorF{ 0x424242 }, // color
-                    1.0f // opacity
+
+                    // background
+                    {
+                        D2D1::ColorF{ 0x2e2e2e }, // color
+                        1.0f // opacity
+                    }
                 },
                 // icon appearance
                 tabAppearances[(size_t)TabState::Hover].icon,
-                { // title appearance
+
+                // title appearance
+                {
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
+
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    D2D1::ColorF{ 0xe5e5e5 }, // foreground color
-                    1.0, // foreground opacity
-                    D2D1::ColorF{ 0x000000 }, // background color
-                    0.0f // background opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0xe5e5e5 }, //color
+                        1.0 // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 },
-                { // close-x appearance
+                // close-x appearance
+                {
                     { 8.0f, 8.0f }, // size
                     12.0f, // right offset
+
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
-                    {{ // idle
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.0f, // background opacity
-                    },{ // hover
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0xffffff }, // background color
-                        0.2f, // background opacity
-                    },{ // down
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0xffffff }, // background color
-                        0.3f, // background opacity
-                    }},
+
+                    // color scheme
+                    {
+                        // idle
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.0f // opacity
+                            }
+                        },
+                        // hover
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0xffffff }, // color
+                                0.2f // opacity
+                            }
+                        },
+                        // down
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0xffffff }, // color
+                                0.3f // opacity
+                            }
+                        }
+                    },
                     1.0f, // stroke width
                 }
             };
             tabAppearances[(size_t)TabState::Dormant] =
             {
-                { // card appearance
+                // card appearance
+                {
                     24.0f, // height
                     8.0f, // round radius
-                    D2D1::ColorF{ 0x1a1a1a }, // color
-                    1.0f // opacity
+
+                    // background
+                    {
+                        D2D1::ColorF{ 0x1a1a1a }, // color
+                        1.0f // opacity
+                    }
                 },
                 // icon appearance
                 tabAppearances[(size_t)TabState::Dormant].icon,
-                { // title appearance
+
+                // title appearance
+                {
                     { 80.0f, 20.0f }, // size
                     12.0f, // left offset
+
                     Resu::TEXT_FORMATS.at(L"微软雅黑/Light/12"),// format
-                    D2D1::ColorF{ 0xe5e5e5 }, // foreground color
-                    1.0, // foreground opacity
-                    D2D1::ColorF{ 0x000000 }, // background color
-                    0.0f // background opacity
+
+                    // foreground
+                    {
+                        D2D1::ColorF{ 0xe5e5e5 }, //color
+                        1.0 // opacity
+                    },
+                    // background
+                    {
+                        D2D1::ColorF{ 0x000000 }, // color
+                        0.0f // opacity
+                    }
                 },
-                { // close-x appearance
+                // close-x appearance
+                {
                     { 8.0f, 8.0f }, // size
                     12.0f, // right offset
+
                     3.0f, // bkgn panel offset
                     4.0f, // bkgn panel round radius
-                    {{ // idle
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0x000000 }, // background color
-                        0.0f, // background opacity
-                    },{ // hover
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0xffffff }, // background color
-                        0.2f, // background opacity
-                    },{ // down
-                        D2D1::ColorF{ 0xffffff }, // foreground color
-                        1.0f, // foreground opacity
-                        D2D1::ColorF{ 0xffffff }, // background color
-                        0.3f, // background opacity
-                    }},
+
+                    // color scheme
+                    {
+                        // idle
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0x000000 }, // color
+                                0.0f // opacity
+                            }
+                        },
+                        // hover
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0xffffff }, // color
+                                0.2f // opacity
+                            }
+                        },
+                        // down
+                        {
+                            // foreground
+                            {
+                                 D2D1::ColorF{ 0xffffff }, // color
+                                1.0f // opacity
+                            },
+                            // background
+                            {
+                                D2D1::ColorF{ 0xffffff }, // color
+                                0.3f // opacity
+                            }
+                        }
+                    },
                     1.0f, // stroke width
                 }
             };

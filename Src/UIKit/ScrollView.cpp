@@ -13,7 +13,7 @@ namespace d14engine::uikit
         :
         Panel(rect, Resu::SOLID_COLOR_BRUSH),
         ResizablePanel(rect, Resu::SOLID_COLOR_BRUSH),
-        mask(Mathu::Rounding(Width()), Mathu::Rounding(Height())),
+        contentMask(Mathu::Rounding(Width()), Mathu::Rounding(Height())),
         m_content(content)
     {
         m_takeOverChildrenDrawing = true;
@@ -38,10 +38,8 @@ namespace d14engine::uikit
 
     void ScrollView::SetContent(ShrdPtrParam<Panel> content)
     {
-        RemoveUIObject(content);
-
-        m_content = content;
-        AddUIObject(content);
+        RemoveUIObject(m_content);
+        AddUIObject(m_content = content);
 
         m_viewportOffset = { 0.0f, 0.0f };
     }
@@ -73,6 +71,9 @@ namespace d14engine::uikit
             m_content->Move(-m_viewportOffset.x, -m_viewportOffset.y);
         }
         else m_viewportOffset = { 0.0f, 0.0f };
+
+        // Trigger corresponding callback.
+        OnViewportOffsetChange(m_viewportOffset);
     }
 
     D2D1_POINT_2F ScrollView::ViewportOffsetPercentage()
@@ -100,6 +101,21 @@ namespace d14engine::uikit
             SetViewportOffset(absoluteOffset);
         }
         else SetViewportOffset({ 0.0f, 0.0f });
+    }
+
+    bool ScrollView::IsControllingScrollBars()
+    {
+        return IsControllingHorzBar() || IsControllingVertBar();
+    }
+
+    bool ScrollView::IsControllingHorzBar()
+    {
+        return m_isHorzBarHover || m_isHorzBarDown;
+    }
+
+    bool ScrollView::IsControllingVertBar()
+    {
+        return m_isVertBarHover || m_isVertBarDown;
     }
 
     D2D1_RECT_F ScrollView::HorzBarRect(ScrollBarState state)
@@ -154,19 +170,58 @@ namespace d14engine::uikit
         return { 0.0f, 0.0f };
     }
 
+    ScrollView::ScrollBarState ScrollView::GetHorzBarState(bool isHover, bool isDown)
+    {
+        if (m_isHorzBarDown) return ScrollBarState::Down;
+        else if (m_isHorzBarHover) return ScrollBarState::Hover;
+        else return ScrollBarState::Idle;
+    }
+
+    ScrollView::ScrollBarState ScrollView::GetVertBarState(bool isHover, bool isDown)
+    {
+        if (m_isVertBarDown) return ScrollBarState::Down;
+        else if (m_isVertBarHover) return ScrollBarState::Hover;
+        else return ScrollBarState::Idle;
+    }
+
+    void ScrollView::OnViewportOffsetChange(const D2D1_POINT_2F& offset)
+    {
+        if (f_onViewportOffsetChangeOverride)
+        {
+            f_onViewportOffsetChangeOverride(this, offset);
+        }
+        else
+        {
+            if (f_onViewportOffsetChangeBefore) f_onViewportOffsetChangeBefore(this, offset);
+
+            OnViewportOffsetChangeHelper(offset);
+
+            if (f_onViewportOffsetChangeAfter) f_onViewportOffsetChangeAfter(this, offset);
+        }
+    }
+
+    void ScrollView::OnViewportOffsetChangeHelper(const D2D1_POINT_2F& offset)
+    {
+        // TODO: add scroll-view viewport offset changed logic.
+    }
+
     void ScrollView::OnRendererDrawD2D1LayerHelper(Renderer* rndr)
     {
         ResizablePanel::OnRendererDrawD2D1LayerHelper(rndr);
 
+        if (m_content != nullptr && m_content->IsD2D1ObjectVisible())
+        {
+            m_content->OnRendererDrawD2D1Layer(rndr);
+        }
         // Content on Mask. Note other children are hidden by default.
-        mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
+        contentMask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
         {
             if (m_content != nullptr && m_content->IsD2D1ObjectVisible())
             {
                 m_content->OnRendererDrawD2D1Object(rndr);
             }
         }
-        mask.EndMaskDraw(rndr->d2d1DeviceContext.Get());
+        contentMask.EndMaskDraw(rndr->d2d1DeviceContext.Get());
     }
 
     void ScrollView::OnRendererDrawD2D1ObjectHelper(Renderer* rndr)
@@ -178,7 +233,7 @@ namespace d14engine::uikit
         ResizablePanel::DrawBackground(rndr);
 
         // Content
-        rndr->d2d1DeviceContext->DrawBitmap(mask.bitmap.Get(), m_absoluteRect);
+        rndr->d2d1DeviceContext->DrawBitmap(contentMask.bitmap.Get(), m_absoluteRect);
 
         // Outline
         Resu::SOLID_COLOR_BRUSH->SetColor(stroke.color);
@@ -192,16 +247,10 @@ namespace d14engine::uikit
         // Scroll Bars
         if (m_content != nullptr)
         {
-            auto horzState = ScrollBarState::Idle; // Idle
-            if (m_isHorzBarHover) horzState = ScrollBarState::Hover;
-            if (m_isHorzBarDown) horzState = ScrollBarState::Down;
+            auto horzState = GetHorzBarState(m_isHorzBarHover, m_isHorzBarDown);
+            auto vertState = GetVertBarState(m_isVertBarHover, m_isVertBarDown);
 
             auto& horzSetting = scrollBarAppearances[(size_t)horzState];
-
-            auto vertState = ScrollBarState::Idle; // Idle
-            if (m_isVertBarHover) vertState = ScrollBarState::Hover;
-            if (m_isVertBarDown) vertState = ScrollBarState::Down;
-
             auto& vertSetting = scrollBarAppearances[(size_t)vertState];
 
             // Horizontal Bar
@@ -238,7 +287,7 @@ namespace d14engine::uikit
         // needs to be updated to ensure it is within the valid range.
         SetViewportOffset(m_viewportOffset);
 
-        mask.LoadMaskBitmap(Mathu::Rounding(e.size.width), Mathu::Rounding(e.size.height));
+        contentMask.LoadMaskBitmap(Mathu::Rounding(e.size.width), Mathu::Rounding(e.size.height));
     }
 
     void ScrollView::OnChangeThemeHelper(WstrViewParam themeName)

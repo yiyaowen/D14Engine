@@ -49,7 +49,7 @@ namespace d14engine::uikit
             if (f_onRendererDrawD2D1LayerBefore) f_onRendererDrawD2D1LayerBefore(rndr);
 
             // Make sure all child-layers are prepared in advance.
-            DrawChildrenLayers(rndr);
+            if (!m_takeOverChildrenDrawing) DrawChildrenLayers(rndr);
 
             OnRendererDrawD2D1LayerHelper(rndr);
 
@@ -95,7 +95,8 @@ namespace d14engine::uikit
 
     bool Panel::IsHit(Event::Point& p)
     {
-        return Mathu::IsOverlapped(p, m_absoluteRect);
+        if (f_isHit) return f_isHit(this, p);
+        else return IsHitHelper(p);
     }
 
     D2D1_SIZE_F Panel::MinimalSize()
@@ -354,6 +355,11 @@ namespace d14engine::uikit
 
             return f_onKeyboardAfter ? f_onKeyboardAfter(this, e) : value;
         }
+    }
+
+    bool Panel::IsHitHelper(Event::Point& p)
+    {
+        return Mathu::IsOverlapped(p, m_absoluteRect);
     }
 
     void Panel::OnSizeHelper(SizeEvent& e)
@@ -669,7 +675,7 @@ namespace d14engine::uikit
     void Panel::RemoveUIObject(ShrdPtrParam<Panel> uiobj)
     {
         m_children.erase(uiobj);
-        m_drawObjects2D.insert(uiobj);
+        m_drawObjects2D.erase(uiobj);
     }
 
     void Panel::PinUIObject(ShrdPtrParam<Panel> uiobj)
@@ -845,7 +851,7 @@ namespace d14engine::uikit
         // std::set is implemented with red-black tree and its equality check
         // relies on strong order relation, which means that to find whether
         // two elements are equal we need to compare them twice:
-        // we say "a == b" if and only if "a > b" if false and "a < b" is false.
+        // we say "a == b" if and only if "a > b" is false and "a < b" is false.
         // Since we introduce "priority" as one of the sorting criteria,
         // so we must not change it before equality-check-dependent operations.
         if (m_parent.expired())

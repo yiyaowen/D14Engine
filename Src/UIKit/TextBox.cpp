@@ -410,7 +410,19 @@ namespace d14engine::uikit
     {
         Panel::OnRendererDrawD2D1LayerHelper(rndr);
 
+        // Only need to prepare layers for built-in text labels.
+        {
+            if (m_textLabel->IsD2D1ObjectVisible())
+            {
+                m_textLabel->OnRendererDrawD2D1Layer(rndr);
+            }
+            if (m_hiliteTextLabel->IsD2D1ObjectVisible())
+            {
+                m_hiliteTextLabel->OnRendererDrawD2D1Layer(rndr);
+            }
+        }
         auto visibleTextAreaLeftTop = VisibleTextAbsolutePosition();
+
         // Clamp all characters into visible text area.
         m_visibleTextMaskStyle.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-visibleTextAreaLeftTop.x, -visibleTextAreaLeftTop.y));
         {

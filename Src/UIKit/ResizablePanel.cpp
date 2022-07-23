@@ -34,7 +34,7 @@ namespace d14engine::uikit
         isLeftResizable = isTopResizable = isRightResizable = isBottomResizable = value;
     }
 
-    bool ResizablePanel::IsHit(Event::Point& p)
+    bool ResizablePanel::IsHitHelper(Event::Point& p)
     {
         return Mathu::IsOverlapped(p, ResizeFrameExtendedRect(m_absoluteRect));
     }

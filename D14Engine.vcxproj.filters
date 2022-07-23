@@ -141,10 +141,13 @@
     <ClCompile Include="Src\UIKit\Button.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Src\UIKit\SandwichButton.cpp">
+    <ClCompile Include="Src\UIKit\ListViewItem.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Src\UIKit\ClickablePanel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UIKit\TreeViewItem.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -305,10 +308,16 @@
     <ClInclude Include="Src\UIKit\Button.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Src\UIKit\SandwichButton.h">
+    <ClInclude Include="Src\UIKit\ListViewItem.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Src\UIKit\ClickablePanel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\UIKit\TreeViewItem.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Common\CppLangUtils.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

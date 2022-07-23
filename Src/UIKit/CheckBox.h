@@ -2,6 +2,8 @@
 
 #include "Common/Precompile.h"
 
+#include "Common/CppLangUtils.h"
+
 #include "UIKit/ClickablePanel.h"
 #include "UIKit/MaskStyle.h"
 #include "UIKit/SolidStyle.h"
@@ -85,7 +87,7 @@ namespace d14engine::uikit
         using StateTransitionMap = std::unordered_map<
             State::ActiveFlag, // source state
             State::ActiveFlag, // destination state
-            decltype([](State::ActiveFlag flag) { return (size_t)flag; })>;
+            EnumClassHash<State::ActiveFlag>>;
 
         // This container stores <Source State, Destination State> as <key, value>.
         // When clicked, current state will be changed to related destination state.

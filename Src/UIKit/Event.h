@@ -127,13 +127,17 @@ namespace d14engine::uikit
 
         WPARAM vkey = VK_NONAME;
 
-        bool LALT() { return GetAsyncKeyState(VK_LMENU) & 0x8000; }
-        bool RALT() { return GetAsyncKeyState(VK_RMENU) & 0x8000; }
+        static bool ALT() { return LALT() || RALT(); }
+        static bool CTRL() { return LCTRL() || RCTRL(); }
+        static bool SHIFT() { return LSHIFT() || RSHIFT(); }
 
-        bool LCTRL() { return GetAsyncKeyState(VK_LCONTROL) & 0x8000; }
-        bool RCTRL() { return GetAsyncKeyState(VK_RCONTROL) & 0x8000; }
+        static bool LALT() { return GetAsyncKeyState(VK_LMENU) & 0x8000; }
+        static bool RALT() { return GetAsyncKeyState(VK_RMENU) & 0x8000; }
 
-        bool LSHIFT() { return GetAsyncKeyState(VK_LSHIFT) & 0x8000; }
-        bool RSHIFT() { return GetAsyncKeyState(VK_RSHIFT) & 0x8000; }
+        static bool LCTRL() { return GetAsyncKeyState(VK_LCONTROL) & 0x8000; }
+        static bool RCTRL() { return GetAsyncKeyState(VK_RCONTROL) & 0x8000; }
+
+        static bool LSHIFT() { return GetAsyncKeyState(VK_LSHIFT) & 0x8000; }
+        static bool RSHIFT() { return GetAsyncKeyState(VK_RSHIFT) & 0x8000; }
     };
 }

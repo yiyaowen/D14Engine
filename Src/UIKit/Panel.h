@@ -74,7 +74,9 @@ namespace d14engine::uikit
 
         virtual void OnInitializeFinish();
 
-        virtual bool IsHit(Event::Point& p);
+        bool IsHit(Event::Point& p);
+
+        Function<bool(Panel*,Event::Point&)> f_isHit = {};
 
         // Always returns { MinimalWidth(), MinimalHeight() }, no virtual.
         D2D1_SIZE_F MinimalSize();
@@ -222,6 +224,8 @@ namespace d14engine::uikit
         * 
         * To sum up, do the actual works in OnxxxHelper method and wrap it into Onxxx method.
         */
+
+        virtual bool IsHitHelper(Event::Point& p);
 
         virtual void OnSizeHelper(SizeEvent& e);
         virtual void OnParentSizeHelper(SizeEvent& e);

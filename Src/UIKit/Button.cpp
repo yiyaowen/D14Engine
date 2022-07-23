@@ -50,7 +50,11 @@ namespace d14engine::uikit
     {
         Panel::OnRendererDrawD2D1LayerHelper(rndr);
 
-        // Hide children by default (Only draw self part).
+        if (textLabel != nullptr && textLabel->IsD2D1ObjectVisible())
+        {
+            textLabel->OnRendererDrawD2D1Layer(rndr);
+        }
+        // Hide children by default (except text label).
         mask.BeginMaskDraw(rndr->d2d1DeviceContext.Get(), D2D1::Matrix3x2F::Translation(-m_absoluteRect.left, -m_absoluteRect.top));
         {
             // Background
@@ -66,13 +70,11 @@ namespace d14engine::uikit
             {
                 rndr->d2d1DeviceContext->DrawBitmap(bitmap.Get(), SelfCoordToAbsolute(iconRect), bitmapOpacity);
             }
-
             // Text
-            if (textLabel != nullptr)
+            if (textLabel != nullptr && textLabel->IsD2D1ObjectVisible())
             {
                 textLabel->OnRendererDrawD2D1Object(rndr);
             }
-
             // Outline
             Resu::SOLID_COLOR_BRUSH->SetColor(stroke.color);
             Resu::SOLID_COLOR_BRUSH->SetOpacity(stroke.opacity);
@@ -90,7 +92,7 @@ namespace d14engine::uikit
         rndr->d2d1DeviceContext->DrawBitmap(mask.bitmap.Get(), m_absoluteRect, mask.opacity);
     }
 
-    bool Button::IsHit(Event::Point& p)
+    bool Button::IsHitHelper(Event::Point& p)
     {
         return Mathu::IsInside(p, m_absoluteRect);
     }

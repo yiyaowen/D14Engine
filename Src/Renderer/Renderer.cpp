@@ -2,6 +2,8 @@
 
 #include "Renderer/Renderer.h"
 
+#include "Common/CppLangUtils.h"
+
 #include "Renderer/DebugController.h"
 #include "Renderer/GraphUtils.h"
 
