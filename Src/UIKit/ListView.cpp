@@ -192,13 +192,12 @@ namespace d14engine::uikit
             for (size_t i = 0; i < m_itemArray.size(); ++i)
             {
                 auto& item = m_itemArray[i];
-                if (dist < offset && (dist += item->Height()) > offset)
+                // Don't use "dist < offset" here since it might cause unexpected
+                // capture failure when the point is right on the edge of an item.
+                if (dist <= offset && (dist += item->Height()) > offset)
                 {
                     return i;
                 }
-                // Failed to capture target index, which may happen when
-                // the specified point is right on the edge of any item.
-                else if (dist > offset) return SIZE_T_MAX;
             }
             return SIZE_T_MAX;
         }

@@ -276,7 +276,7 @@ int wmain(int argc, wchar_t* argv[])
 
             // List View
 
-            for (int i = 0; i < 100; ++i)
+            for (int i = 0; i < 30; ++i)
             {
                 listView->AppendItem(MakeUIObject<ListViewItem>(
                     D2D1_RECT_F{ 0.0f, 0.0f, 0.0f, 30.0f },
